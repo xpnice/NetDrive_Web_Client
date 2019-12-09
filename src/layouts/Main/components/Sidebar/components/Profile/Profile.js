@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import PropTypes from 'prop-types';
 import { makeStyles } from '@material-ui/styles';
 import { Avatar, Typography } from '@material-ui/core';
+import store from 'store'
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -25,9 +26,8 @@ const Profile = props => {
   const { className, ...rest } = props;
 
   const classes = useStyles();
-
   const user = {
-    name: 'Shen Zhi',
+    name: store.getState().username,
     avatar: '/images/avatars/avatar_11.png',
     bio: 'Brain Director'
   };

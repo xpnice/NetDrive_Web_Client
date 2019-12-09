@@ -35,7 +35,7 @@ const NotFound = () => {
         >
           <div className={classes.content}>
             <Typography variant="h1">
-              404: The page you are looking for isnâ€™t here
+              404: The page you are looking for is missing here
             </Typography>
             <Typography variant="subtitle2">
               You either tried some shady route or you came here by mistake.

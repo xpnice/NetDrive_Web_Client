@@ -3,15 +3,15 @@ import { Link as RouterLink, withRouter } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import validate from 'validate.js';
 import { makeStyles } from '@material-ui/styles';
+import store from '../../store';
 import {
   Grid,
   Button,
-  IconButton,
   TextField,
   Link,
   Typography
 } from '@material-ui/core';
-import ArrowBackIcon from '@material-ui/icons/ArrowBack';
+import CircularIndeterminate from '../loading.js'
 
 
 const schema = {
@@ -49,27 +49,11 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundImage: 'url(/images/auth.jpg)',
+    backgroundImage: 'url(/images/jj.jpg)',
     backgroundSize: 'cover',
     backgroundRepeat: 'no-repeat',
     backgroundPosition: 'center'
   },
-  quoteInner: {
-    textAlign: 'center',
-    flexBasis: '600px'
-  },
-  quoteText: {
-    color: theme.palette.white,
-    fontWeight: 300
-  },
-  name: {
-    marginTop: theme.spacing(3),
-    color: theme.palette.white
-  },
-  bio: {
-    color: theme.palette.white
-  },
-  contentContainer: {},
   content: {
     height: '100%',
     display: 'flex',
@@ -132,7 +116,8 @@ const SignIn = props => {
     isValid: false,
     values: {},
     touched: {},
-    errors: {}
+    errors: {},
+    loading: false
   });
 
   useEffect(() => {
@@ -145,9 +130,6 @@ const SignIn = props => {
     }));
   }, [formState.values]);
 
-  const handleBack = () => {
-    history.goBack();
-  };
 
 
   const handleChange = event => {
@@ -171,9 +153,16 @@ const SignIn = props => {
 
   async function handleSignIn(event) {
     var Console = console;
+    Console.log(store.getState())
+    store.dispatch({ type: 'sign', username: formState.values.email })
+    Console.log(store.getState())
     event.preventDefault();
+    setFormState(formState => ({
+      ...formState,
+      loading: true
+    }));
     const url = 'http://192.168.193.80:20521';
-    const data = { email: formState.values.email, passwork: formState.values.password };
+    const data = { process: 'signin', username: formState.values.email, password: formState.values.password };
     try {
       const response = await fetch(url, {
         method: 'POST', // or 'PUT'
@@ -183,13 +172,34 @@ const SignIn = props => {
         }
       });
       const json = await response.json();
-      alert(1);
       Console.log('Success:', JSON.stringify(json));
+      Console.log(json.status)
+      if (json.status === 'WRONG') {
+        alert('账号或密码错误!')
+        setFormState(formState => ({
+          ...formState,
+          loading: false
+        }));
+      }
+      if (json.status === 'OK') {
+        var user_info = { username: formState.values.email };
+        var path = {
+          pathname: '/dashboard',
+          query: user_info,
+        }
+        history.push(path);
+      }
+
     } catch (error) {
       Console.error('Error:', error);
+      alert('与服务器连接失败，请稍后重试!')
+      setFormState(formState => ({
+        ...formState,
+        loading: false
+      }));
     }
 
-    //history.push('/');
+
   }
 
   const hasError = field =>
@@ -205,30 +215,7 @@ const SignIn = props => {
           item
           lg={5}
         >
-          <div className={classes.quote}>
-            <div className={classes.quoteInner}>
-              <Typography
-                className={classes.quoteText}
-                variant="h1"
-              >
-                这是一个非常牛逼的网盘，但即使如此你也需要登录。
-              </Typography>
-              <div className={classes.person}>
-                <Typography
-                  className={classes.name}
-                  variant="body1"
-                >
-                  渣哥的作业
-                </Typography>
-                <Typography
-                  className={classes.bio}
-                  variant="body2"
-                >
-                  不容小视
-                </Typography>
-              </div>
-            </div>
-          </div>
+          <div className={classes.quote} />
         </Grid>
         <Grid
           className={classes.content}
@@ -237,11 +224,7 @@ const SignIn = props => {
           xs={12}
         >
           <div className={classes.content}>
-            <div className={classes.contentHeader}>
-              <IconButton onClick={handleBack}>
-                <ArrowBackIcon />
-              </IconButton>
-            </div>
+            <div className={classes.contentHeader} />
             <div className={classes.contentBody}>
               <form
                 className={classes.form}
@@ -284,14 +267,14 @@ const SignIn = props => {
                 <Button
                   className={classes.signInButton}
                   color="primary"
-                  disabled={!formState.isValid}
+                  disabled={(formState.loading ^ formState.isValid) ? false : true}
                   fullWidth
                   size="large"
                   type="submit"
                   variant="contained"
 
                 >
-                  Sign in now
+                  {formState.loading ? <CircularIndeterminate /> : 'Sign in now'}
                 </Button>
                 <Typography
                   color="textSecondary"
@@ -311,7 +294,7 @@ const SignIn = props => {
           </div>
         </Grid>
       </Grid>
-    </div>
+    </div >
   );
 };
 

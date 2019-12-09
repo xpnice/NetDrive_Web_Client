@@ -1,0 +1,20 @@
+{
+    "username": "lyp970805@163.com",
+    "content": [
+        {
+            "path": "/home/u1754027/1.txt",
+            "type": "file",
+            "hash": "dq6ef54edq65d46q7e"
+        },
+        {
+            "path": "/home/u1754027/do",
+            "type": "dir",
+            "hash": "dq6ef54edq65d46q11"
+        },
+        {
+            "path": "/home/u1754027/do/1.txt",
+            "type": "file",
+            "hash": "dq6ef54edq65d46q2e"
+        }
+    ]
+}
