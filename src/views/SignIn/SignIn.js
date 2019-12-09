@@ -153,9 +153,6 @@ const SignIn = props => {
 
   async function handleSignIn(event) {
     var Console = console;
-    Console.log(store.getState())
-    store.dispatch({ type: 'sign', username: formState.values.email })
-    Console.log(store.getState())
     event.preventDefault();
     setFormState(formState => ({
       ...formState,
@@ -173,7 +170,7 @@ const SignIn = props => {
       });
       const json = await response.json();
       Console.log('Success:', JSON.stringify(json));
-      Console.log(json.status)
+      //Console.log(json.status)
       if (json.status === 'WRONG') {
         alert('账号或密码错误!')
         setFormState(formState => ({
@@ -182,6 +179,7 @@ const SignIn = props => {
         }));
       }
       if (json.status === 'OK') {
+        store.dispatch({ type: 'sign', username: formState.values.email })
         var user_info = { username: formState.values.email };
         var path = {
           pathname: '/dashboard',

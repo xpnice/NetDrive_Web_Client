@@ -5,9 +5,10 @@ import { makeStyles } from '@material-ui/styles';
 import { Divider, Drawer } from '@material-ui/core';
 import DashboardIcon from '@material-ui/icons/Dashboard';
 import AccountBoxIcon from '@material-ui/icons/AccountBox';
-import LockOpenIcon from '@material-ui/icons/LockOpen';
-
+import store from '../../../../store';
 import { Profile, SidebarNav } from './components';
+import { Redirect } from 'react-router';
+
 
 const useStyles = makeStyles(theme => ({
   drawer: {
@@ -49,28 +50,30 @@ const Sidebar = props => {
       icon: <AccountBoxIcon />
     }
   ];
-
-  return (
-    <Drawer
-      anchor="left"
-      classes={{ paper: classes.drawer }}
-      onClose={onClose}
-      open={open}
-      variant={variant}
-    >
-      <div
-        {...rest}
-        className={clsx(classes.root, className)}
+  if (store.getState().username === null)
+    return (<Redirect to="/sign-in" />);
+  else
+    return (
+      <Drawer
+        anchor="left"
+        classes={{ paper: classes.drawer }}
+        onClose={onClose}
+        open={open}
+        variant={variant}
       >
-        <Profile />
-        <Divider className={classes.divider} />
-        <SidebarNav
-          className={classes.nav}
-          pages={pages}
-        />
-      </div>
-    </Drawer>
-  );
+        <div
+          {...rest}
+          className={clsx(classes.root, className)}
+        >
+          <Profile />
+          <Divider className={classes.divider} />
+          <SidebarNav
+            className={classes.nav}
+            pages={pages}
+          />
+        </div>
+      </Drawer>
+    );
 };
 
 Sidebar.propTypes = {

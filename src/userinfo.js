@@ -1,4 +1,4 @@
-export default (state = { username: 'lyp970805' }, action) => {
+export default (state = { username: null }, action) => {
   switch (action.type) {
     case 'sign': {
       return Object.assign({}, state, { username: action.username });
