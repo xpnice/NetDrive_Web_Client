@@ -1,0 +1,17 @@
+{
+  "files": {
+    "main.css": "/Net_Drive_Web_Client/static/css/main.c99bf7f0.chunk.css",
+    "main.js": "/Net_Drive_Web_Client/static/js/main.841bbca8.chunk.js",
+    "main.js.map": "/Net_Drive_Web_Client/static/js/main.841bbca8.chunk.js.map",
+    "runtime~main.js": "/Net_Drive_Web_Client/static/js/runtime~main.d34c10e8.js",
+    "runtime~main.js.map": "/Net_Drive_Web_Client/static/js/runtime~main.d34c10e8.js.map",
+    "static/css/2.222cfc28.chunk.css": "/Net_Drive_Web_Client/static/css/2.222cfc28.chunk.css",
+    "static/js/2.c25e220c.chunk.js": "/Net_Drive_Web_Client/static/js/2.c25e220c.chunk.js",
+    "static/js/2.c25e220c.chunk.js.map": "/Net_Drive_Web_Client/static/js/2.c25e220c.chunk.js.map",
+    "index.html": "/Net_Drive_Web_Client/index.html",
+    "precache-manifest.9b6385fa911ef80bd2404bdcc5c9b23a.js": "/Net_Drive_Web_Client/precache-manifest.9b6385fa911ef80bd2404bdcc5c9b23a.js",
+    "service-worker.js": "/Net_Drive_Web_Client/service-worker.js",
+    "static/css/2.222cfc28.chunk.css.map": "/Net_Drive_Web_Client/static/css/2.222cfc28.chunk.css.map",
+    "static/css/main.c99bf7f0.chunk.css.map": "/Net_Drive_Web_Client/static/css/main.c99bf7f0.chunk.css.map"
+  }
+}
