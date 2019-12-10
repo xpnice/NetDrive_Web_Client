@@ -101,7 +101,7 @@ class FileUpload extends Component {
         formData.append('chunk_info', chunk_info)
         formData.append('chunk', blob, chunkMd5)
         request
-          .post('http://192.168.193.80:20521')
+          .post('http://120.55.41.240:20521')
           .send(formData)
           .withCredentials()
           .retry(2)
@@ -245,7 +245,7 @@ class FileUpload extends Component {
         })
         return false
       },
-      //action: 'http://192.168.193.80:20521',
+      //action: 'http://120.55.41.240:20521',
       fileList: _this.state.fileList,
     }
 

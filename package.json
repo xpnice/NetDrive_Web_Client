@@ -1,12 +1,15 @@
 {
-  "name": "react-material-dashboard",
-  "author": "DeviasIO",
-  "email": "contact@devias.io",
+  "name": "Net_Drive_Web_Client",
+  "author": "Daniel Lee",
+  "email": "xp970805@gmail.com",
+  "homepage": "https://xpnice.github.io/Net_Drive_Web_Client/",
   "licence": "MIT",
   "version": "0.3.0",
   "private": false,
   "scripts": {
     "start": "react-scripts start",
+    "predeply": "yarn run build",
+    "deploy": "gh-pages -d build",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
