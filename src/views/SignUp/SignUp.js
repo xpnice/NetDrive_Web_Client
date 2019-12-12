@@ -169,7 +169,7 @@ const SignUp = props => {
         }));
       }
       if (json.status === 'OK') {
-        history.push('/dashboard');
+        history.push('/sign-in');
       }
 
     } catch (error) {

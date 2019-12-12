@@ -6,6 +6,7 @@ import { Upload, Icon, Button, Progress, Modal, Spin, message } from 'antd'
 
 import request from 'superagent'
 import SparkMD5 from 'spark-md5'
+import store from 'store';
 
 const confirm = Modal.confirm
 const Dragger = Upload.Dragger
@@ -16,7 +17,6 @@ class FileUpload extends Component {
     this.state = {
       preUploading: false,   //预处理
       chunksSize: 0,   // 上传文件分块的总个数
-      currentChunks: 0,  // 当前上传的队列个数 当前还剩下多少个分片没上传
       uploadPercent: -1,  // 上传率
       preUploadPercent: -1, // 预处理率  
       uploadRequest: false, // 上传请求，即进行第一个过程中
@@ -40,99 +40,108 @@ class FileUpload extends Component {
   preUpload = () => {//与服务器交互部分
     //let res = request.post('http://localhost:3000', this.state.uploadParams)
     //console.log(res);
+    var _this = this
     var Console = console;
     let uploadList = this.state.uploadParams.chunks//分片上传列表
-    Console.log(this.state.uploadParams)
-    let currentChunks = this.state.uploadParams.file.fileChunks
-
-    var _this = this
-    // 获得上传进度
-    let uploadPercent = Number(((this.state.chunksSize - currentChunks) / this.state.chunksSize * 100).toFixed(2))
-    // 上传之前，先判断文件是否已经上传成功
-    if (uploadPercent === 100) {
-      message.success('上传成功')
-      _this.setState({
-        uploaded: true,    // 让进度条消失
-        uploading: false
-      })
-    } else {
-      _this.setState({
-        uploaded: false,
-        uploading: true
-      })
+    Console.log('uploadParams:', this.state.uploadParams)
+    const Data = {
+      process: 'uploadRequest',
+      username: store.getState().username,
+      hash: _this.state.uploadParams.file.fileMd5,
+      size: _this.state.uploadParams.file.fileSize.toString(),
+      path: '~/'
     }
-
-    _this.setState({
-      uploadRequest: false,    // 上传请求成功
-      currentChunks: currentChunks,
-      uploadPercent
-    })
-
-    //进行分片上传
-    this.handlePartUpload(uploadList)
+    Console.log('uploadRequest:', Data)
+    request
+      .post('http://120.55.41.240:20521')
+      .send(JSON.stringify(Data))
+      .withCredentials()
+      .retry(2)
+      .end((err, res) => {
+        Console.log('upload Request Response', res.body);
+        if (res.statusCode === 200) {
+          if (res.body.status === 'OK') {
+            // 获得上传进度
+            let uploadPercent = Number((parseInt(res.body.NextChunk) / this.state.chunksSize * 100).toFixed(2))
+            // 上传之前，先判断文件是否已经上传成功
+            _this.setState({
+              uploaded: false,
+              uploading: true
+            })
+            _this.setState({
+              uploadRequest: false,    // 上传请求成功
+              uploadPercent
+            })
+            //进行分片上传
+            this.handlePartUpload(uploadList[parseInt(res.body.NextChunk)])
+            return
+          }
+          if (res.body.status === 'OVER') {
+            message.success('上传成功')
+            _this.setState({
+              uploaded: true,    // 让进度条消失
+              uploading: false
+            })
+            return
+          }
+          alert('服务器响应错误!请重试')
+          return
+        }
+        if (err) {
+          alert('连接错误，请重新上传')
+        }
+      })
   }
-
-  handlePartUpload = (uploadList) => {
-    //let blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice
+  handlePartUpload = (Chunk_Now) => {
     const _this = this
-    const batchSize = 1,    // 采用分治思想，每批上传的片数，越大越卡
-      total = uploadList.length,   //获得分片的总数
-      batchCount = total / batchSize    // 需要批量处理多少次
-    let batchDone = 0     //已经完成的批处理个数
-    doBatchAppend()
-    function doBatchAppend() {
-      if (batchDone < batchCount) {
-        let list = uploadList.slice(batchSize * batchDone, batchSize * (batchDone + 1))
-        setTimeout(() => silcePart(list), 2000);
-      }
+    var Console = console
+    let { chunkMd5, chunk } = Chunk_Now
+    let formData = new FormData(),
+      blob = new Blob([_this.state.arrayBufferData[chunk - 1].currentBuffer], { type: 'application/octet-stream' })
+    const chunk_info = {
+      subscript: '5',
+      chunk: chunk.toString(),
+      hash: _this.state.uploadParams.file.fileMd5,
+      username: store.getState().username
     }
-
-    function silcePart(list) {
-      var Console = console
-      batchDone += 1;
-      doBatchAppend();
-      list.forEach((value) => {
-        let { fileMd5, chunkMd5, chunk, start, end } = value
-        let formData = new FormData(),
-          blob = new Blob([_this.state.arrayBufferData[chunk - 1].currentBuffer], { type: 'application/octet-stream' }),
-          params = `fileMd5=${fileMd5}&chunkMd5=${chunkMd5}&chunk=${chunk}&start=${start}&end=${end}&chunks=${_this.state.arrayBufferData.length}`
-
-        const chunk_info = '{"subscript":"5","chunk":"5","hash":"81cc181194afc67fa7c52a88e57c2e52","username":"lyp970805@163.com"}'
-        formData.append('chunk_info', chunk_info)
-        formData.append('chunk', blob, chunkMd5)
-        request
-          .post('http://120.55.41.240:20521')
-          .send(formData)
-          .withCredentials()
-          .retry(2)
-          .end((err, res) => {
-            Console.log(res);
-            if (err) {
-              alert('连接错误，请重新上传')
-            }
-            if (res.statusCode === 200) {
-              let currentChunks = _this.state.currentChunks
-              --currentChunks
-              // 计算上传进度
-              let uploadPercent = Number(((_this.state.chunksSize - currentChunks) / _this.state.chunksSize * 100).toFixed(2))
-              _this.setState({
-                currentChunks,  // 同步当前所需上传的chunks
-                uploadPercent,
-                uploading: true
-              })
-              if (currentChunks === 0) {
-                // 调用验证api
-
-                //_this.checkUploadStatus(_this.state.fileMd5)
-                _this.setState({
-                  uploading: false,
-                  uploaded: true
-                })
-              }
-            }
-          })
+    Console.log('send with chunk:', chunk_info)
+    formData.append('chunk_info', JSON.stringify(chunk_info))
+    formData.append('chunk', blob, chunkMd5)
+    request
+      .post('http://120.55.41.240:20521')
+      .send(formData)
+      .withCredentials()
+      .retry(2)//发起两次重连
+      .end((err, res) => {
+        Console.log('Send Chunk Response', res.body);
+        if (err) {
+          alert('连接错误，请重新上传')
+          return
+        }
+        if (res.statusCode === 200) {
+          if (res.body.status === 'OK') {
+            // 计算上传进度
+            let uploadPercent = Number(((chunk) / _this.state.chunksSize * 100).toFixed(2))
+            _this.setState({
+              uploadPercent,
+              uploading: true
+            })
+            _this.handlePartUpload(_this.state.uploadParams.chunks[parseInt(res.body.NextChunk)])//上传下一块
+            return
+          }
+          if (res.body.status === 'OVER') {
+            // 调用验证api
+            //_this.checkUploadStatus(_this.state.fileMd5)
+            _this.setState({
+              uploading: false,
+              uploaded: true
+            })
+            return
+          }
+          alert('服务器响应错误!请重试')
+          return
+        }
       })
-    }
   }
   render() {
     const { preUploading, uploadPercent, preUploadPercent, uploadRequest, uploaded, uploading } = this.state
@@ -210,8 +219,9 @@ class FileUpload extends Component {
             })
           } else {
             //记录所有chunks的长度
+            var Console = console;
             params.file.fileChunks = params.chunks.length
-            //console.log(params)
+            Console.log('arrayBufferData', arrayBufferData)
             // 表示预处理结束，将上传的参数，arrayBuffer的数据存储起来
             _this.setState({
               preUploading: false,

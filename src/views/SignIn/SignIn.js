@@ -49,7 +49,8 @@ const useStyles = makeStyles(theme => ({
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundImage: 'url(/images/jj.jpg)',
+    // eslint-disable-next-line no-undef
+    backgroundImage: 'url('+process.env.PUBLIC_URL+'/images/jj.jpg)',
     backgroundSize: 'cover',
     backgroundRepeat: 'no-repeat',
     backgroundPosition: 'center'
@@ -169,8 +170,8 @@ const SignIn = props => {
         }
       });
       const json = await response.json();
-      Console.log('Success:', JSON.stringify(json));
-      //Console.log(json.status)
+      Console.log('Sign In Success:', JSON.stringify(json));
+      Console.log(response)
       if (json.status === 'WRONG') {
         alert('账号或密码错误!')
         setFormState(formState => ({
