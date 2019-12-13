@@ -2,7 +2,7 @@ import React from 'react';
 import { makeStyles } from '@material-ui/styles';
 import { Grid } from '@material-ui/core';
 
-import { AccountDetails,FileUpload } from './components';
+import { AccountDetails,UsersByDevice } from './components';
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -26,7 +26,7 @@ const Account = () => {
           xl={4}
           xs={12}
         >
-          <FileUpload />
+          <UsersByDevice />
         </Grid>
         <Grid
           item

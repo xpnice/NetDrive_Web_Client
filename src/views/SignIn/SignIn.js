@@ -12,6 +12,7 @@ import {
   Typography
 } from '@material-ui/core';
 import CircularIndeterminate from '../loading.js'
+import md5 from 'md5'
 
 
 const schema = {
@@ -50,7 +51,7 @@ const useStyles = makeStyles(theme => ({
     justifyContent: 'center',
     alignItems: 'center',
     // eslint-disable-next-line no-undef
-    backgroundImage: 'url('+process.env.PUBLIC_URL+'/images/jj.jpg)',
+    backgroundImage: 'url(' + process.env.PUBLIC_URL + '/images/jj.jpg)',
     backgroundSize: 'cover',
     backgroundRepeat: 'no-repeat',
     backgroundPosition: 'center'
@@ -160,7 +161,7 @@ const SignIn = props => {
       loading: true
     }));
     const url = 'http://120.55.41.240:20521';
-    const data = { process: 'signin', username: formState.values.email, password: formState.values.password };
+    const data = { process: 'signin', username: formState.values.email, password: md5(formState.values.password) };
     try {
       const response = await fetch(url, {
         method: 'POST', // or 'PUT'
@@ -170,8 +171,7 @@ const SignIn = props => {
         }
       });
       const json = await response.json();
-      Console.log('Sign In Success:', JSON.stringify(json));
-      Console.log(response)
+
       if (json.status === 'WRONG') {
         alert('账号或密码错误!')
         setFormState(formState => ({
@@ -180,6 +180,7 @@ const SignIn = props => {
         }));
       }
       if (json.status === 'OK') {
+        Console.log('登录成功:', formState.values.email);
         store.dispatch({ type: 'sign', username: formState.values.email })
         var user_info = { username: formState.values.email };
         var path = {

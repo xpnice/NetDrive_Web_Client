@@ -18,7 +18,7 @@ const Routes = () => {
       <Redirect
         exact
         from="/"
-        to="/sign-in"
+        to="/dashboard"
       />
       <RouteWithLayout
         component={DashboardView}

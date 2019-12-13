@@ -12,7 +12,7 @@ import { Redirect } from 'react-router';
 
 const useStyles = makeStyles(theme => ({
   drawer: {
-    width: 240,
+    width: 220,
     [theme.breakpoints.up('lg')]: {
       marginTop: 64,
       height: 'calc(100% - 64px)'
@@ -50,30 +50,30 @@ const Sidebar = props => {
       icon: <AccountBoxIcon />
     }
   ];
-  if (store.getState().username === null)
-    return (<Redirect to="/sign-in" />);
-  else
-    return (
-      <Drawer
-        anchor="left"
-        classes={{ paper: classes.drawer }}
-        onClose={onClose}
-        open={open}
-        variant={variant}
+  //if (store.getState().username === null)
+  //  return (<Redirect to="/sign-in" />);
+  //else
+  return (
+    <Drawer
+      anchor="left"
+      classes={{ paper: classes.drawer }}
+      onClose={onClose}
+      open={open}
+      variant={variant}
+    >
+      <div
+        {...rest}
+        className={clsx(classes.root, className)}
       >
-        <div
-          {...rest}
-          className={clsx(classes.root, className)}
-        >
-          <Profile />
-          <Divider className={classes.divider} />
-          <SidebarNav
-            className={classes.nav}
-            pages={pages}
-          />
-        </div>
-      </Drawer>
-    );
+        <Profile />
+        <Divider className={classes.divider} />
+        <SidebarNav
+          className={classes.nav}
+          pages={pages}
+        />
+      </div>
+    </Drawer>
+  );
 };
 
 Sidebar.propTypes = {

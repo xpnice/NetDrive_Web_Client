@@ -35,30 +35,29 @@ const Topbar = props => {
       className={clsx(classes.root, className)}
     >
       <Toolbar>
-        <RouterLink to="/">
-          
+        <RouterLink to="/dashboard">
           <img
             alt="Logo"
-            src={process.env.PUBLIC_URL+'/images/logos/log.svg'}
+            src={process.env.PUBLIC_URL + '/images/logos/log.svg'}
           />
         </RouterLink>
         <div className={classes.flexGrow} />
-        <Hidden mdDown>
-          <Link
+
+        <Link
+          className={classes.signOutButton}
+          color="inherit"
+          component={RouterLink}
+          to="/sign-in"
+        >
+          <IconButton
             className={classes.signOutButton}
             color="inherit"
-            component={RouterLink}
-            to="/sign-up"
           >
-            <IconButton
-              className={classes.signOutButton}
-              color="inherit"
-            >
-              <InputIcon />
-            </IconButton>
-          </Link>
+            <InputIcon />
+          </IconButton>
+        </Link>
 
-        </Hidden>
+
         <Hidden lgUp>
           <IconButton
             color="inherit"

@@ -11,6 +11,7 @@ import {
   Typography
 } from '@material-ui/core';
 import CircularIndeterminate from '../loading.js'
+import md5 from 'md5'
 
 const schema = {
   email: {
@@ -149,7 +150,7 @@ const SignUp = props => {
       loading: true
     }));
     const url = 'http://120.55.41.240:20521';
-    const data = { process: 'signup', username: formState.values.email, password: formState.values.password };
+    const data = { process: 'signup', username: formState.values.email, password: md5(formState.values.password) };
     try {
       const response = await fetch(url, {
         method: 'POST', // or 'PUT'
