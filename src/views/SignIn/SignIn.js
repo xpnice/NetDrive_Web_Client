@@ -13,6 +13,7 @@ import {
 } from '@material-ui/core';
 import CircularIndeterminate from '../loading.js'
 import md5 from 'md5'
+import config from 'config.json'
 
 
 const schema = {
@@ -160,7 +161,7 @@ const SignIn = props => {
       ...formState,
       loading: true
     }));
-    const url = 'http://114.55.94.123:20521';
+    const url = 'http://'+config.server_addr+':'+config.server_port;
     const data = { process: 'signin', username: formState.values.email, password: md5(formState.values.password) };
     try {
       const response = await fetch(url, {

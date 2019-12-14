@@ -11,7 +11,7 @@ import FormControlLabel from '@material-ui/core/FormControlLabel';
 import request from 'superagent'
 import SparkMD5 from 'spark-md5'
 import store from 'store';
-
+import config from 'config.json'
 const Dragger = Upload.Dragger
 
 class FileUpload extends Component {
@@ -53,7 +53,7 @@ class FileUpload extends Component {
     }
     Console.log('文件上传请求报文:', Data)
     request
-      .post('http://114.55.94.123:20521')
+      .post('http://' + config.server_addr + ':' + config.server_port)
       .send(JSON.stringify(Data))
       .withCredentials()
       .retry(2)
@@ -119,7 +119,7 @@ class FileUpload extends Component {
     formData.append('chunk_info', JSON.stringify(chunk_info))
     formData.append('chunk', blob, chunkMd5)
     request
-      .post('http://114.55.94.123:20521')
+      .post('http://' + config.server_addr + ':' + config.server_port)
       .send(formData)
       .withCredentials()
       .retry(100)//发起两次重连

@@ -7,7 +7,7 @@ import TreeView from '@material-ui/lab/TreeView';
 import TreeItem from '@material-ui/lab/TreeItem';
 import Collapse from '@material-ui/core/Collapse';
 import { useSpring, animated } from 'react-spring/web.cjs'; // web.cjs is required for IE 11 support
-
+import store from 'store';
 function MinusSquare(props) {
   return (
     <SvgIcon fontSize="inherit" {...props}>
@@ -75,31 +75,54 @@ const useStyles = makeStyles({
     maxWidth: 400,
   },
 });
+function Tree_view(tree, id) {
+  if (tree.content !== null) {
+    if (tree.content === '') {
+      return (<StyledTreeItem key={(id++).toString()} nodeId={tree.path} label={tree.path} ></StyledTreeItem>)
+    }
+    else {
+      let tree_arr = []
+      for (var pos in tree.content) {
+        tree_arr.push(Tree_view(tree.content[pos], id++))
+      }
+      return (<StyledTreeItem key={(id++).toString()} nodeId={tree.path} label={tree.path} >{tree_arr}</StyledTreeItem>)
 
+    }
+  }
+  else return (<StyledTreeItem key={(id++).toString()} nodeId={tree.path} label={tree.path} />)
+
+}
 export default function TreeContent() {
   const classes = useStyles();
+  let tree = {
+    path: store.getState().username,
+    content: [
+      {
+        path: '/空文件夹1',
+        content: ''
+      },
+      {
+        path: '/文件1'
+      },
+      {
+        path: '/文件夹1',
+        content: [
+          {
+            path: '/文件夹1/文件1'
+          }
+        ]
+      }
+    ]
+  };
   return (
     <TreeView
       className={classes.root}
-      //defaultExpanded={['1']}
+      defaultExpanded={['5']}
       defaultCollapseIcon={<MinusSquare />}
       defaultExpandIcon={<PlusSquare />}
       defaultEndIcon={<CloseSquare />}
     >
-      <StyledTreeItem nodeId="1" label="Main" onClick={()=>{console.log(1)}}>
-        <StyledTreeItem nodeId="2" label="Hello" />
-        <StyledTreeItem nodeId="3" label="Subtree with children">
-          <StyledTreeItem nodeId="6" label="Hello" />
-          <StyledTreeItem nodeId="7" label="Sub-subtree with children">
-            <StyledTreeItem nodeId="9" label="Child 1" />
-            <StyledTreeItem nodeId="10" label="Child 2" />
-            <StyledTreeItem nodeId="11" label="Child 3" />
-          </StyledTreeItem>
-          <StyledTreeItem nodeId="8" label="Hello" />
-        </StyledTreeItem>
-        <StyledTreeItem nodeId="4" label="World" />
-        <StyledTreeItem nodeId="5" label="Something something" />
-      </StyledTreeItem>
-    </TreeView>
+      {Tree_view(tree, 0)}
+    </TreeView >
   );
 }
