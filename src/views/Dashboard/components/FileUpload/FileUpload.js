@@ -19,7 +19,7 @@ class FileUpload extends Component {
     super(props)
     this.state = {
       preUploading: false,   //预处理
-      chunksSize: 0,   // 上传文件分块的总个数
+      //chunksSize: 0,   // 上传文件分块的总个数
       uploadPercent: -1,  // 上传率
       preUploadPercent: -1, // 预处理率  
       uploadRequest: false, // 上传请求，即进行第一个过程中
@@ -27,6 +27,12 @@ class FileUpload extends Component {
       uploading: false, // 上传中状态
       fileList: [],
       directory: false,
+      uploading_sub: 0,
+      uploadParams: [],
+      arrayBufferData: [],
+      chunksSize: [],
+      totalchunks: 0,
+      pre_chunks_now: 0,
     }
   }
   showConfirm = () => {
@@ -36,18 +42,18 @@ class FileUpload extends Component {
   preUpload = () => {//与服务器交互部分
     var _this = this
     var Console = console;
-    let uploadList = this.state.uploadParams.chunks//分片上传列表
-    Console.log('文件分块结果:', this.state.uploadParams)
+    let uploadList = this.state.uploadParams[this.state.uploading_sub].chunks//分片上传列表
+    Console.log('文件分块结果:', this.state.uploadParams[this.state.uploading_sub])
     const Data = {
       process: 'uploadRequest',
       username: store.getState().username,
-      hash: _this.state.uploadParams.file.fileMd5,
-      size: _this.state.uploadParams.file.fileSize.toString(),
-      path: '~/'
+      hash: _this.state.uploadParams[this.state.uploading_sub].file.fileMd5,
+      size: _this.state.uploadParams[this.state.uploading_sub].file.fileSize.toString(),
+      path: _this.state.uploadParams[this.state.uploading_sub].file.path
     }
     Console.log('文件上传请求报文:', Data)
     request
-      .post('http://120.55.41.240:20521')
+      .post('http://114.55.94.123:20521')
       .send(JSON.stringify(Data))
       .withCredentials()
       .retry(2)
@@ -61,7 +67,7 @@ class FileUpload extends Component {
           Console.log('从服务器获得请求响应:', res.body)
           if (res.body.status === 'OK') {
             // 获得上传进度
-            let uploadPercent = Number((parseInt(res.body.NextChunk) / this.state.chunksSize * 100).toFixed(2))
+            let uploadPercent = Number((parseInt(res.body.NextChunk) / this.state.chunksSize[this.state.uploading_sub] * 100).toFixed(2))
             // 上传之前，先判断文件是否已经上传成功
             _this.setState({
               uploaded: false,
@@ -76,11 +82,18 @@ class FileUpload extends Component {
             return
           }
           if (res.body.status === 'OVER') {
-            message.success('上传成功')
-            _this.setState({
-              uploaded: true,    // 让进度条消失
-              uploading: false
-            })
+            if (this.state.uploading_sub === this.state.fileList.length - 1) {//如果所有文件上传结束
+              message.success('上传成功')
+              _this.setState({
+                uploaded: true,    // 让进度条消失
+                uploading: false
+              })
+            }
+            else {//否则上传下一个文件
+              this.setState({ uploading_sub: this.state.uploading_sub + 1 })
+              this.preUpload()
+            }
+
             return
           }
           alert('服务器响应错误!请重试')
@@ -94,11 +107,11 @@ class FileUpload extends Component {
     var Console = console
     let { chunkMd5, chunk } = Chunk_Now
     let formData = new FormData(),
-      blob = new Blob([_this.state.arrayBufferData[chunk - 1].currentBuffer], { type: 'application/octet-stream' })
+      blob = new Blob([_this.state.arrayBufferData[this.state.uploading_sub][chunk - 1].currentBuffer], { type: 'application/octet-stream' })
     const chunk_info = {
       subscript: sub,
       chunk: (chunk - 1).toString(),
-      hash: _this.state.uploadParams.file.fileMd5,
+      hash: _this.state.uploadParams[this.state.uploading_sub].file.fileMd5,
       username: store.getState().username
     }
 
@@ -106,7 +119,7 @@ class FileUpload extends Component {
     formData.append('chunk_info', JSON.stringify(chunk_info))
     formData.append('chunk', blob, chunkMd5)
     request
-      .post('http://120.55.41.240:20521')
+      .post('http://114.55.94.123:20521')
       .send(formData)
       .withCredentials()
       .retry(100)//发起两次重连
@@ -125,21 +138,28 @@ class FileUpload extends Component {
           Console.log('从服务器获得请求响应:', res.body)
           if (res.body.status === 'OK') {
             // 计算上传进度
-            let uploadPercent = Number(((chunk) / _this.state.chunksSize * 100).toFixed(2))
+            let uploadPercent = Number(((chunk) / _this.state.chunksSize[_this.state.uploading_sub] * 100).toFixed(2))
             _this.setState({
               uploadPercent,
               uploading: true
             })
-            _this.handlePartUpload(_this.state.uploadParams.chunks[parseInt(res.body.NextChunk)], res.body.subscript)//上传下一块
+            _this.handlePartUpload(_this.state.uploadParams[this.state.uploading_sub].chunks[parseInt(res.body.NextChunk)], res.body.subscript)//上传下一块
             return
           }
           if (res.body.status === 'OVER') {
             // 调用验证api
             //_this.checkUploadStatus(_this.state.fileMd5)
-            _this.setState({
-              uploading: false,
-              uploaded: true
-            })
+            if (this.state.uploading_sub === this.state.fileList.length - 1) {//如果所有文件上传结束
+              message.success('上传成功')
+              _this.setState({
+                uploaded: true,    // 让进度条消失
+                uploading: false
+              })
+            }
+            else {//否则上传下一个文件
+              this.setState({ uploading_sub: this.state.uploading_sub + 1 })
+              this.preUpload()
+            }
             return
           }
           alert('服务器响应错误!请重试')
@@ -176,20 +196,25 @@ class FileUpload extends Component {
           chunks = Math.ceil(file.size / chunkSize),  //切片数量
           currentChunk = 0, // 当前上传的chunk
           spark = new SparkMD5.ArrayBuffer(),
+          //totalchunks = _this.state.totalchunks + chunks,
+          //pre_chunks_now = _this.state.pre_chunks_now,
           // 对arrayBuffer数据进行md5加密，产生一个md5字符串
           chunkFileReader = new FileReader(),  // 用于计算出每个chunkMd5
           totalFileReader = new FileReader()  // 用于计算出总文件的fileMd5
 
         let params = { chunks: [], file: {} },   // 用于上传所有分片的md5信息
-          arrayBufferData = []              // 用于存储每个chunk的arrayBuffer对象,用于分片上传使用
+          arrayBuffer = []              // 用于存储每个chunk的arrayBuffer对象,用于分片上传使用
         params.file.fileName = file.name
+        params.file.path = file.webkitRelativePath
         params.file.fileSize = file.size
+
 
         totalFileReader.readAsArrayBuffer(file)
         totalFileReader.onload = function (e) {
           // 对整个totalFile生成md5
           spark.append(e.target.result)
           params.file.fileMd5 = spark.end() // 计算整个文件的fileMd5
+
         }
 
         chunkFileReader.onload = function (e) {
@@ -204,7 +229,9 @@ class FileUpload extends Component {
             chunks
           }
           // 每一次分片onload,currentChunk都需要增加，以便来计算分片的次数
+
           currentChunk++;
+          _this.setState({ pre_chunks_now: _this.state.pre_chunks_now + 1 })
           params.chunks.push(obj)
 
           // 将每一块分片的arrayBuffer存储起来，用来partUpload
@@ -212,7 +239,7 @@ class FileUpload extends Component {
             chunk: obj.chunk,
             currentBuffer: e.target.result
           }
-          arrayBufferData.push(tmp)
+          arrayBuffer.push(tmp)
 
           if (currentChunk < chunks) {
             // 当前切片总数没有达到总数时
@@ -221,47 +248,61 @@ class FileUpload extends Component {
             // 计算预处理进度
             _this.setState({
               preUploading: true,
-              preUploadPercent: Number((currentChunk / chunks * 100).toFixed(2))
+              preUploadPercent: Number((_this.state.pre_chunks_now / _this.state.totalchunks * 100).toFixed(2))
             })
           } else {
             //记录所有chunks的长度
             var Console = console;
             params.file.fileChunks = params.chunks.length
-            Console.log('文件内容:', arrayBufferData)
+            let chunksSize = _this.state.chunksSize,
+              uploadParams = _this.state.uploadParams,
+              arrayBufferData = _this.state.arrayBufferData
+            chunksSize.push(chunks);
+            uploadParams.push(params);
+            arrayBufferData.push(arrayBuffer)
             // 表示预处理结束，将上传的参数，arrayBuffer的数据存储起来
-            _this.setState({
-              preUploading: false,
-              uploadParams: params,
+            if (_this.state.pre_chunks_now === _this.state.totalchunks) {
+              Console.log('所有文件预处理完成')
+              _this.setState({
+                preUploading: false,
+                uploadParams,
+                arrayBufferData,
+                chunksSize,
+                preUploadPercent: 100
+              })
+            }
+
+            else _this.setState({
+              uploadParams,
               arrayBufferData,
-              chunksSize: chunks,
-              preUploadPercent: 100
+              chunksSize,
             })
-
-
           }
         }
         chunkFileReader.onerror = function () {
           var Console = console
           Console.warn('oops, something went wrong.');
         };
-
         function loadNext() {
           var start = currentChunk * chunkSize,
             end = ((start + chunkSize) >= file.size) ? file.size : start + chunkSize;
           chunkFileReader.readAsArrayBuffer(blobSlice.call(file, start, end));
         }
-
         loadNext()
         let fileList = _this.state.fileList
         fileList.push(file)
-        console.log('文件列表:', fileList)
+        //console.log('文件列表:', fileList)
+        let totalchunks = fileList.reduce(function (partial, file) {
+          return partial + Math.ceil(file.size / (1024 * 512));
+        }, 0)
         _this.setState({
+          totalchunks,
           fileList: fileList,
           file: file
         })
         return false
       },
-      //action: 'http://120.55.41.240:20521',
+      //action: 'http://114.55.94.123:20521',
       fileList: _this.state.fileList,
     }
 
@@ -347,5 +388,6 @@ class FileUpload extends Component {
 FileUpload.propTypes = {
   //...
 }
+
 
 export default FileUpload;

@@ -160,7 +160,7 @@ const SignIn = props => {
       ...formState,
       loading: true
     }));
-    const url = 'http://120.55.41.240:20521';
+    const url = 'http://114.55.94.123:20521';
     const data = { process: 'signin', username: formState.values.email, password: md5(formState.values.password) };
     try {
       const response = await fetch(url, {
