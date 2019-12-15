@@ -6,6 +6,8 @@ import Paper from '@material-ui/core/Paper';
 import Draggable from 'react-draggable';
 import FileUpload from '../FileUpload'
 import { forwardRef } from 'react';
+import config from 'config.json'
+
 
 import AddBox from '@material-ui/icons/AddBox';
 import ArrowDownward from '@material-ui/icons/ArrowDownward';
@@ -22,7 +24,9 @@ import Remove from '@material-ui/icons/Remove';
 import SaveAlt from '@material-ui/icons/SaveAlt';
 import Search from '@material-ui/icons/Search';
 import ViewColumn from '@material-ui/icons/ViewColumn';
-
+import store from 'store'
+import PropTypes from 'prop-types';
+import { connect } from 'react-redux'
 const tableIcons = {
   Add: forwardRef((props, ref) => <AddBox {...props} ref={ref} />),
   Check: forwardRef((props, ref) => <Check {...props} ref={ref} />),
@@ -43,6 +47,77 @@ const tableIcons = {
   ViewColumn: forwardRef((props, ref) => <ViewColumn {...props} ref={ref} />)
 };
 
+async function download() {
+  var can_down = true;
+  var Console = console
+  const Data = {
+    process: 'downloadRequest',
+  }
+  Console.log('文件下载请求报文:', Data)
+  // request
+  //   .post('http://' + config.server_addr + ':' + config.server_port)
+  //   .send(JSON.stringify(Data))
+  //   .withCredentials()
+  //   .retry(2)
+  //   .end((err, res) => {
+  //     if (err) {
+  //       Console.log(err.rawResponse)
+  //       return
+  //     }
+  //     //Console.log('upload Request Response', res.body);
+  //     if (res.statusCode === 200) {
+  //       Console.log('从服务器获得请求响应:', res)
+  //     }
+
+  //   })
+  if (can_down) {
+    const url = 'http://' + config.server_addr + ':' + config.server_port;
+    Promise.race([
+      fetch(url, { method: 'POST', body: JSON.stringify(Data) }),
+      new Promise(function (resolve, reject) {
+        setTimeout(() => reject(new Error('request timeout')), 200000)
+      })
+    ])
+      .then(async res => {
+        let clone = res.clone()
+        const reader = clone.body.getReader();
+        // Step 3: read the data
+        let receivedLength = 0; // received that many bytes at the moment
+        let chunks = []; // array of received binary chunks (comprises the body)
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          chunks.push(value);
+          receivedLength += value.length;
+
+          Console.log(`收到 ${receivedLength}`)
+        }
+        return (res)
+      })
+      .then(res => res.blob().then(blob => {
+        let a = document.createElement('a');
+        let url = window.URL.createObjectURL(blob);
+        //let filename = res.headers.get('Content-Disposition');
+        let filename = 'hello.docx';
+        Console.log(filename)
+        if (filename) {
+          //filename = filename.match(/\"(.*)\"/)[1]; //提取文件名
+          a.href = url;
+          a.download = filename; //给下载下来的文件起个名字
+          a.click();
+          window.URL.revokeObjectURL(url);
+          a = null;
+        }
+      }
+      )).catch((err) => {
+        Console.log('文件下载失败', err)//请求失败
+      });
+
+
+  }
+}
 
 function PaperComponent(props) {
   return (
@@ -51,7 +126,19 @@ function PaperComponent(props) {
     </Draggable>
   );
 }
-export default function MaterialTableDemo() {
+const mapStateToProps = (store) => {
+  return {
+    prop4store: store
+  }
+}
+function MaterialTableDemo(props) {
+  const { prop4store } = props;
+  var Console = console
+  //var tree = 
+  var data = [];
+  //var title 
+  //if (store.getState().tree)
+  //title = store.getState().tree.path
   const [state, setState] = React.useState({
     columns: [
       { title: 'FileName', field: 'filename' },
@@ -61,8 +148,8 @@ export default function MaterialTableDemo() {
     data: [
       { filename: 'Mehmet', size: '3MB', uptime: '2019.12.9 20:20' },
       { filename: 'hello', size: '215KB', uptime: '2019.12.9 20:34' },
-
     ],
+    title: store.getState().tree === null ? 'tree' : store.getState().tree.path
   });
   const [open, setOpen] = React.useState(false);
 
@@ -76,11 +163,10 @@ export default function MaterialTableDemo() {
     <div>
       <MaterialTable
         icons={tableIcons}
-        title="Editable Example"
+        title={prop4store.files.name}
         columns={state.columns}
-        data={state.data}
+        data={prop4store.files.files}
         editable={{
-
           onRowUpdate: (newData, oldData) =>
             new Promise(resolve => {
               setTimeout(() => {
@@ -112,9 +198,15 @@ export default function MaterialTableDemo() {
             tooltip: 'Upload File',
             isFreeAction: true,
             onClick: handleClickOpen,
+          },
+          {
+            icon: tableIcons.Export,
+            tooltip: 'Download File',
+            onClick: (event, rowData) => alert("You saved " + rowData.name)
           }
         ]}
       />
+      <input type="button" value="下载" onClick={download} />
       <Dialog
         open={open}
         onClose={handleClose}
@@ -126,3 +218,7 @@ export default function MaterialTableDemo() {
     </div>
   );
 }
+export default connect(mapStateToProps)(MaterialTableDemo)
+MaterialTableDemo.propTypes = {
+  prop4store: PropTypes.object
+};

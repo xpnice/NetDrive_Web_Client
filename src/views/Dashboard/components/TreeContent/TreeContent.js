@@ -1,3 +1,4 @@
+/* eslint-disable react/self-closing-comp */
 /* eslint-disable react/no-multi-comp */
 import React from 'react';
 import PropTypes from 'prop-types';
@@ -6,6 +7,7 @@ import { fade, makeStyles, withStyles } from '@material-ui/core/styles';
 import TreeView from '@material-ui/lab/TreeView';
 import TreeItem from '@material-ui/lab/TreeItem';
 import Collapse from '@material-ui/core/Collapse';
+import config from 'config'
 import { useSpring, animated } from 'react-spring/web.cjs'; // web.cjs is required for IE 11 support
 import store from 'store';
 function MinusSquare(props) {
@@ -75,49 +77,53 @@ const useStyles = makeStyles({
     maxWidth: 400,
   },
 });
+function handle_treeclick(tree) {
+  console.log('进入文件夹：', tree);
+  store.dispatch({ type: 'intree', tree: tree })
+
+
+}
 function Tree_view(tree, id) {
-  if (tree.content !== null) {
-    if (tree.content === '') {
-      return (<StyledTreeItem key={(id++).toString()} nodeId={tree.path} label={tree.path} ></StyledTreeItem>)
+  //console.log(tree)
+  if ('content' in tree) {
+    if (tree.content.length === 0) {//空文件夹
+      return (<StyledTreeItem
+        key={(id++).toString()}
+        label={tree.path.slice(tree.path.lastIndexOf('/') + 1)}
+        nodeId={tree.path}
+        onClick={() => handle_treeclick(tree)}>
+      </ StyledTreeItem>)
     }
-    else {
+    else {//非空文件夹
       let tree_arr = []
       for (var pos in tree.content) {
-        tree_arr.push(Tree_view(tree.content[pos], id++))
+        if ('content' in tree.content[pos] || config.show_file_in_tree)
+          tree_arr.push(Tree_view(tree.content[pos], id++))
       }
-      return (<StyledTreeItem key={(id++).toString()} nodeId={tree.path} label={tree.path} >{tree_arr}</StyledTreeItem>)
+      return (<StyledTreeItem
+        key={(id++).toString()}
+        label={tree.path.slice(tree.path.lastIndexOf('/') + 1)}
+        nodeId={tree.path}
+        onClick={() => handle_treeclick(tree)}
+      >{tree_arr}</StyledTreeItem>)
 
     }
   }
-  else return (<StyledTreeItem key={(id++).toString()} nodeId={tree.path} label={tree.path} />)
+  else if (config.show_file_in_tree) {//文件
+    return (<StyledTreeItem 
+      key={(id++).toString()} 
+      nodeId={tree.path} 
+      label={tree.path.slice(tree.path.lastIndexOf('/') + 1)} />)
+  }
 
 }
 export default function TreeContent() {
   const classes = useStyles();
-  let tree = {
-    path: store.getState().username,
-    content: [
-      {
-        path: '/空文件夹1',
-        content: ''
-      },
-      {
-        path: '/文件1'
-      },
-      {
-        path: '/文件夹1',
-        content: [
-          {
-            path: '/文件夹1/文件1'
-          }
-        ]
-      }
-    ]
-  };
+  let tree = store.getState().tree
   return (
     <TreeView
       className={classes.root}
-      defaultExpanded={['5']}
+      defaultExpanded={[store.getState().username]}
       defaultCollapseIcon={<MinusSquare />}
       defaultExpandIcon={<PlusSquare />}
       defaultEndIcon={<CloseSquare />}

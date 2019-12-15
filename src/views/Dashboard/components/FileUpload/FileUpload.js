@@ -35,6 +35,53 @@ class FileUpload extends Component {
       pre_chunks_now: 0,
     }
   }
+  overack = () => {
+    var _this = this,
+      Console = console
+    const formData = {
+      process: 'overack',
+      username: store.getState().username,
+      hash: _this.state.uploadParams[this.state.uploading_sub].file.fileMd5,
+      path: _this.state.uploadParams[this.state.uploading_sub].file.path
+    }
+    Console.log('确认上传成功请求包:', formData)
+    request
+      .post('http://' + config.server_addr + ':' + config.server_port)
+      .send(JSON.stringify(formData))
+      .withCredentials()
+      .retry(3)//发起两次重连
+      .timeout({
+        response: 10000,  // Wait 10 seconds for the server to start sending,
+        deadline: 60000, // but allow 1 minute for the file to finish loading.
+      })
+      .end((err, res) => {
+        //Console.log('Send Chunk Response', res.body);
+        if (err) {
+          Console.log(err);
+          alert('连接错误，请重新上传')
+          return false
+        }
+        if (res.statusCode === 200) {
+          Console.log('从服务器获得上传成功响应:', res.body)
+          if (res.body.status === 'OK') {
+            if (this.state.uploading_sub === this.state.fileList.length - 1) {//如果所有文件上传结束
+              message.success(`文件${_this.state.uploadParams[this.state.uploading_sub].file.path}上传成功`)
+              _this.setState({
+                uploaded: true,    // 让进度条消失
+                uploading: false
+              })
+            }
+            else {//否则上传下一个文件
+              this.setState({ uploading_sub: this.state.uploading_sub + 1 })
+              this.preUpload()
+            }
+            return
+          }
+          alert('服务器响应错误!请重试')
+          return false
+        }
+      })
+  }
   showConfirm = () => {
     const _this = this
     _this.preUpload()
@@ -43,7 +90,7 @@ class FileUpload extends Component {
     var _this = this
     var Console = console;
     let uploadList = this.state.uploadParams[this.state.uploading_sub].chunks//分片上传列表
-    Console.log('文件分块结果:', this.state.uploadParams[this.state.uploading_sub])
+
     const Data = {
       process: 'uploadRequest',
       username: store.getState().username,
@@ -51,7 +98,8 @@ class FileUpload extends Component {
       size: _this.state.uploadParams[this.state.uploading_sub].file.fileSize.toString(),
       path: _this.state.uploadParams[this.state.uploading_sub].file.path
     }
-    Console.log('文件上传请求报文:', Data)
+    Console.log(`文件${Data.path}分块结果:`, this.state.uploadParams[this.state.uploading_sub])
+    Console.log(`文件${Data.path}上传请求报文:`, Data)
     request
       .post('http://' + config.server_addr + ':' + config.server_port)
       .send(JSON.stringify(Data))
@@ -62,38 +110,23 @@ class FileUpload extends Component {
           alert('连接错误，请重新上传')
           return
         }
-        //Console.log('upload Request Response', res.body);
         if (res.statusCode === 200) {
           Console.log('从服务器获得请求响应:', res.body)
-          if (res.body.status === 'OK') {
+          if (res.body.status === 'OK') {//允许发送文件
             // 获得上传进度
             let uploadPercent = Number((parseInt(res.body.NextChunk) / this.state.chunksSize[this.state.uploading_sub] * 100).toFixed(2))
-            // 上传之前，先判断文件是否已经上传成功
             _this.setState({
               uploaded: false,
-              uploading: true
-            })
-            _this.setState({
-              uploadRequest: false,    // 上传请求成功
+              uploading: true,
+              uploadRequest: false,
               uploadPercent
             })
             //进行分片上传
             this.handlePartUpload(uploadList[parseInt(res.body.NextChunk)], res.body.subscript)
             return
           }
-          if (res.body.status === 'OVER') {
-            if (this.state.uploading_sub === this.state.fileList.length - 1) {//如果所有文件上传结束
-              message.success('上传成功')
-              _this.setState({
-                uploaded: true,    // 让进度条消失
-                uploading: false
-              })
-            }
-            else {//否则上传下一个文件
-              this.setState({ uploading_sub: this.state.uploading_sub + 1 })
-              this.preUpload()
-            }
-
+          if (res.body.status === 'OVER') {//妙传
+            this.overack()
             return
           }
           alert('服务器响应错误!请重试')
@@ -114,7 +147,6 @@ class FileUpload extends Component {
       hash: _this.state.uploadParams[this.state.uploading_sub].file.fileMd5,
       username: store.getState().username
     }
-
     Console.log('发送第' + chunk_info.chunk + '块:', chunk_info)
     formData.append('chunk_info', JSON.stringify(chunk_info))
     formData.append('chunk', blob, chunkMd5)
@@ -147,19 +179,7 @@ class FileUpload extends Component {
             return
           }
           if (res.body.status === 'OVER') {
-            // 调用验证api
-            //_this.checkUploadStatus(_this.state.fileMd5)
-            if (this.state.uploading_sub === this.state.fileList.length - 1) {//如果所有文件上传结束
-              message.success('上传成功')
-              _this.setState({
-                uploaded: true,    // 让进度条消失
-                uploading: false
-              })
-            }
-            else {//否则上传下一个文件
-              this.setState({ uploading_sub: this.state.uploading_sub + 1 })
-              this.preUpload()
-            }
+            this.overack()
             return
           }
           alert('服务器响应错误!请重试')
@@ -192,12 +212,10 @@ class FileUpload extends Component {
         })
         // 兼容性的处理
         let blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice,
-          chunkSize = 1024 * 512,                             // 切片每次5M
+          chunkSize = config.chunk_size,                             // 切片每次5M
           chunks = Math.ceil(file.size / chunkSize),  //切片数量
           currentChunk = 0, // 当前上传的chunk
           spark = new SparkMD5.ArrayBuffer(),
-          //totalchunks = _this.state.totalchunks + chunks,
-          //pre_chunks_now = _this.state.pre_chunks_now,
           // 对arrayBuffer数据进行md5加密，产生一个md5字符串
           chunkFileReader = new FileReader(),  // 用于计算出每个chunkMd5
           totalFileReader = new FileReader()  // 用于计算出总文件的fileMd5
@@ -205,8 +223,12 @@ class FileUpload extends Component {
         let params = { chunks: [], file: {} },   // 用于上传所有分片的md5信息
           arrayBuffer = []              // 用于存储每个chunk的arrayBuffer对象,用于分片上传使用
         params.file.fileName = file.name
-        params.file.path = file.webkitRelativePath
+        if (file.webkitRelativePath !== '')
+          params.file.path = `${store.getState().tree.path}/${file.webkitRelativePath}`
+        else
+          params.file.path = `${store.getState().tree.path}/${file.name}`
         params.file.fileSize = file.size
+
 
 
         totalFileReader.readAsArrayBuffer(file)
@@ -271,7 +293,6 @@ class FileUpload extends Component {
                 preUploadPercent: 100
               })
             }
-
             else _this.setState({
               uploadParams,
               arrayBufferData,
@@ -293,7 +314,7 @@ class FileUpload extends Component {
         fileList.push(file)
         //console.log('文件列表:', fileList)
         let totalchunks = fileList.reduce(function (partial, file) {
-          return partial + Math.ceil(file.size / (1024 * 512));
+          return partial + Math.ceil(file.size / config.chunk_size);
         }, 0)
         _this.setState({
           totalchunks,
@@ -302,7 +323,6 @@ class FileUpload extends Component {
         })
         return false
       },
-      //action: 'http://114.55.94.123:20521',
       fileList: _this.state.fileList,
     }
 

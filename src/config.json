@@ -1,4 +1,6 @@
 {
     "server_addr": "114.55.94.123",
-    "server_port": "20521"
+    "server_port": "20521",
+    "chunk_size": 524288,
+    "show_file_in_tree": false
 }

@@ -5,7 +5,7 @@ import {
   LatestSales,
   TreeContent
 } from './components';
-
+import store from 'store'
 const useStyles = makeStyles(theme => ({
   root: {
     padding: theme.spacing(2)
@@ -36,7 +36,7 @@ const Dashboard = () => {
           xl={8}
           xs={12}
         >
-          <LatestSales />
+          <LatestSales store={store}/>
         </Grid>
         
       </Grid>
