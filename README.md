@@ -106,3 +106,7 @@ material-react-dashboard
 
 - Email Us: contact@devias.io
 - [Follow us on Instagram](https://www.instagram.com/deviasio/)
+
+## 对material-table的源码修改
+
+改变了m-table-toolbar中title的大小(h6->h4)，改变了searchbar和DefaultActions的渲染顺序

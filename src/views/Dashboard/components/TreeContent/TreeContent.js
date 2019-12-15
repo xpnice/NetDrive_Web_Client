@@ -8,6 +8,9 @@ import TreeView from '@material-ui/lab/TreeView';
 import TreeItem from '@material-ui/lab/TreeItem';
 import Collapse from '@material-ui/core/Collapse';
 import config from 'config'
+import {
+  Card
+} from '@material-ui/core';
 import { useSpring, animated } from 'react-spring/web.cjs'; // web.cjs is required for IE 11 support
 import store from 'store';
 function MinusSquare(props) {
@@ -72,7 +75,7 @@ const StyledTreeItem = withStyles(theme => ({
 
 const useStyles = makeStyles({
   root: {
-    height: 264,
+    height: '100%',
     flexGrow: 1,
     maxWidth: 400,
   },
@@ -110,9 +113,9 @@ function Tree_view(tree, id) {
     }
   }
   else if (config.show_file_in_tree) {//文件
-    return (<StyledTreeItem 
-      key={(id++).toString()} 
-      nodeId={tree.path} 
+    return (<StyledTreeItem
+      key={(id++).toString()}
+      nodeId={tree.path}
       label={tree.path.slice(tree.path.lastIndexOf('/') + 1)} />)
   }
 
@@ -121,14 +124,18 @@ export default function TreeContent() {
   const classes = useStyles();
   let tree = store.getState().tree
   return (
-    <TreeView
-      className={classes.root}
-      defaultExpanded={[store.getState().username]}
-      defaultCollapseIcon={<MinusSquare />}
-      defaultExpandIcon={<PlusSquare />}
-      defaultEndIcon={<CloseSquare />}
-    >
-      {Tree_view(tree, 0)}
-    </TreeView >
+    <div style={{ height: '100%' }}>
+      <Card style={{ height: '100%' }}>
+        <TreeView style={{ marginLeft: 5, marginTop: 5 }}
+          className={classes.root}
+          defaultExpanded={[store.getState().username]}
+          defaultCollapseIcon={<MinusSquare />}
+          defaultExpandIcon={<PlusSquare />}
+          defaultEndIcon={<CloseSquare />}
+        >
+          {Tree_view(tree, 0)}
+        </TreeView >
+      </Card>
+    </div>
   );
 }

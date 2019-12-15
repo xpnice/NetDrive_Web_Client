@@ -1,3 +1,5 @@
+/* eslint-disable react/jsx-max-props-per-line */
+/* eslint-disable react/display-name */
 /* eslint-disable react/no-multi-comp */
 import React from 'react';
 import MaterialTable from 'material-table';
@@ -24,6 +26,8 @@ import Remove from '@material-ui/icons/Remove';
 import SaveAlt from '@material-ui/icons/SaveAlt';
 import Search from '@material-ui/icons/Search';
 import ViewColumn from '@material-ui/icons/ViewColumn';
+import CreateNewFolderIcon from '@material-ui/icons/CreateNewFolder';
+import CloudUploadIcon from '@material-ui/icons/CloudUpload';
 import store from 'store'
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux'
@@ -44,32 +48,19 @@ const tableIcons = {
   Search: forwardRef((props, ref) => <Search {...props} ref={ref} />),
   SortArrow: forwardRef((props, ref) => <ArrowDownward {...props} ref={ref} />),
   ThirdStateCheck: forwardRef((props, ref) => <Remove {...props} ref={ref} />),
-  ViewColumn: forwardRef((props, ref) => <ViewColumn {...props} ref={ref} />)
+  ViewColumn: forwardRef((props, ref) => <ViewColumn {...props} ref={ref} />),
+  CreateNewFolderIcon:forwardRef((props, ref) => <CreateNewFolderIcon {...props} ref={ref} />),
+  CloudUploadIcon:forwardRef((props, ref) => <CloudUploadIcon {...props} ref={ref} />)
 };
 
-async function download() {
+async function download(path, rowData) {
   var can_down = true;
   var Console = console
   const Data = {
     process: 'downloadRequest',
+    path: `${path}/${rowData.filename}`
   }
   Console.log('文件下载请求报文:', Data)
-  // request
-  //   .post('http://' + config.server_addr + ':' + config.server_port)
-  //   .send(JSON.stringify(Data))
-  //   .withCredentials()
-  //   .retry(2)
-  //   .end((err, res) => {
-  //     if (err) {
-  //       Console.log(err.rawResponse)
-  //       return
-  //     }
-  //     //Console.log('upload Request Response', res.body);
-  //     if (res.statusCode === 200) {
-  //       Console.log('从服务器获得请求响应:', res)
-  //     }
-
-  //   })
   if (can_down) {
     const url = 'http://' + config.server_addr + ':' + config.server_port;
     Promise.race([
@@ -91,7 +82,6 @@ async function download() {
           }
           chunks.push(value);
           receivedLength += value.length;
-
           Console.log(`收到 ${receivedLength}`)
         }
         return (res)
@@ -99,17 +89,12 @@ async function download() {
       .then(res => res.blob().then(blob => {
         let a = document.createElement('a');
         let url = window.URL.createObjectURL(blob);
-        //let filename = res.headers.get('Content-Disposition');
-        let filename = 'hello.docx';
-        Console.log(filename)
-        if (filename) {
-          //filename = filename.match(/\"(.*)\"/)[1]; //提取文件名
-          a.href = url;
-          a.download = filename; //给下载下来的文件起个名字
-          a.click();
-          window.URL.revokeObjectURL(url);
-          a = null;
-        }
+        let filename = rowData.filename;
+        a.href = url;
+        a.download = filename; //给下载下来的文件起个名字
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a = null;
       }
       )).catch((err) => {
         Console.log('文件下载失败', err)//请求失败
@@ -133,13 +118,8 @@ const mapStateToProps = (store) => {
 }
 function MaterialTableDemo(props) {
   const { prop4store } = props;
-  var Console = console
-  //var tree = 
-  var data = [];
-  //var title 
-  //if (store.getState().tree)
-  //title = store.getState().tree.path
   const [state, setState] = React.useState({
+    selectedRow: null,
     columns: [
       { title: 'FileName', field: 'filename' },
       { title: 'Size', field: 'size', editable: 'never' },
@@ -194,7 +174,19 @@ function MaterialTableDemo(props) {
         }}
         actions={[
           {
-            icon: tableIcons.Add,
+            icon: tableIcons.Edit,
+            tooltip: 'Upload File',
+            isFreeAction: true,
+            onClick: handleClickOpen,
+          },
+          {
+            icon: tableIcons.CreateNewFolderIcon,
+            tooltip: 'create new folder',
+            isFreeAction: true,
+            onClick: handleClickOpen,
+          },
+          {
+            icon: tableIcons.CloudUploadIcon,
             tooltip: 'Upload File',
             isFreeAction: true,
             onClick: handleClickOpen,
@@ -202,16 +194,30 @@ function MaterialTableDemo(props) {
           {
             icon: tableIcons.Export,
             tooltip: 'Download File',
-            onClick: (event, rowData) => alert("You saved " + rowData.name)
+            onClick: (event, rowData) => download(prop4store.tree.path, rowData)
           }
         ]}
+        onRowClick={((evt, selectedRow) => {
+          if (state.selectedRow === null || selectedRow.tableData.id !== state.selectedRow.tableData.id) {
+            setState({ ...state, selectedRow })
+            return
+          }
+          if (selectedRow.tableData.id === state.selectedRow.tableData.id)
+            setState({ ...state, selectedRow: null })
+
+        })}
+        options={{
+          rowStyle: rowData => ({
+            backgroundColor: (state.selectedRow && state.selectedRow.tableData.id === rowData.tableData.id) ? '#EEE' : '#FFF'
+          })
+        }}
+
       />
-      <input type="button" value="下载" onClick={download} />
       <Dialog
-        open={open}
-        onClose={handleClose}
         PaperComponent={PaperComponent}
         aria-labelledby="draggable-dialog-title"
+        onClose={handleClose}
+        open={open}
       >
         <FileUpload />
       </Dialog>

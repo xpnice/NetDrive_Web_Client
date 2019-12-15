@@ -18,7 +18,7 @@ const Dashboard = () => {
     <div className={classes.root}>
       <Grid
         container
-        spacing={1}
+        spacing={2}
       >
         <Grid
           item
