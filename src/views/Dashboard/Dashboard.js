@@ -27,7 +27,7 @@ const Dashboard = () => {
           xl={4}
           xs={12}
         >
-          <TreeContent />
+          <TreeContent store={store} />
         </Grid>
         <Grid
           item
@@ -36,9 +36,9 @@ const Dashboard = () => {
           xl={8}
           xs={12}
         >
-          <LatestSales store={store}/>
+          <LatestSales store={store} />
         </Grid>
-        
+
       </Grid>
     </div>
   );

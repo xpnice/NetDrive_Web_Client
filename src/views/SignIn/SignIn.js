@@ -182,7 +182,7 @@ const SignIn = props => {
       }
       if (json.status === 'OK') {
         Console.log('登录成功:', formState.values.email);
-        store.dispatch({ type: 'sign', username: formState.values.email })
+        store.dispatch({ type: 'signin', username: formState.values.email,tree:json.tree })
         var user_info = { username: formState.values.email };
         var path = {
           pathname: '/dashboard',
@@ -190,7 +190,6 @@ const SignIn = props => {
         }
         history.push(path);
       }
-
     } catch (error) {
       Console.error('Error:', error);
       alert('与服务器连接失败，请稍后重试!')

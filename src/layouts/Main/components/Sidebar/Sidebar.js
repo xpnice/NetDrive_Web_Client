@@ -50,30 +50,30 @@ const Sidebar = props => {
       icon: <AccountBoxIcon />
     }
   ];
-  //if (store.getState().username === null)
-  //  return (<Redirect to="/sign-in" />);
-  //else
-  return (
-    <Drawer
-      anchor="left"
-      classes={{ paper: classes.drawer }}
-      onClose={onClose}
-      open={open}
-      variant={variant}
-    >
-      <div
-        {...rest}
-        className={clsx(classes.root, className)}
+  if (store.getState().username === 'hello')
+    return (<Redirect to="/sign-in" />);
+  else
+    return (
+      <Drawer
+        anchor="left"
+        classes={{ paper: classes.drawer }}
+        onClose={onClose}
+        open={open}
+        variant={variant}
       >
-        <Profile />
-        <Divider className={classes.divider} />
-        <SidebarNav
-          className={classes.nav}
-          pages={pages}
-        />
-      </div>
-    </Drawer>
-  );
+        <div
+          {...rest}
+          className={clsx(classes.root, className)}
+        >
+          <Profile />
+          <Divider className={classes.divider} />
+          <SidebarNav
+            className={classes.nav}
+            pages={pages}
+          />
+        </div>
+      </Drawer>
+    );
 };
 
 Sidebar.propTypes = {

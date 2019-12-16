@@ -110,3 +110,5 @@ material-react-dashboard
 ## 对material-table的源码修改
 
 改变了m-table-toolbar中title的大小(h6->h4)，改变了searchbar和DefaultActions的渲染顺序
+改变了m-table-body-row中action组件中endpos的位置为4，4为column的数量
+改变了M-table-headr中action组件endpos的位置为4，4为column的数量

@@ -2,7 +2,7 @@ import React, { Component } from 'react'
 //import PropTypes from 'prop-types'
 import 'antd/dist/antd.css';
 
-import { Upload, Icon, Progress, Spin, message } from 'antd'
+import { Upload, Icon, Progress, Spin } from 'antd'
 import {
   Card, Button
 } from '@material-ui/core';
@@ -13,6 +13,36 @@ import SparkMD5 from 'spark-md5'
 import store from 'store';
 import config from 'config.json'
 const Dragger = Upload.Dragger
+async function mkdir_request(dirname) {
+  var Console = console
+  let data = { process: 'mkdir', username: store.getState().username, path: `${store.getState().tree.path}/${dirname}` }
+  Console.log('新建文件夹请求:', data)
+  const url = 'http://' + config.server_addr + ':' + config.server_port;
+  try {
+    const response = await fetch(url, {
+      method: 'POST', // or 'PUT'
+      body: JSON.stringify(data), // data can be `string` or {object}!
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      }
+    });
+    const json = await response.json();
+    if (json.status === 'WRONG') {
+      alert('建立文件夹失败')
+      return
+    }
+    if (json.status === 'OK') {
+      store.dispatch({ type: 'mkdir', dirname })
+      Console.log('新建文件夹成功', dirname)
+      return
+    }
+
+  } catch (error) {
+    Console.error('Error:', error);
+    alert('与服务器连接失败，请稍后重试!')
+  }
+
+}
 
 class FileUpload extends Component {
   constructor(props) {
@@ -64,15 +94,21 @@ class FileUpload extends Component {
         if (res.statusCode === 200) {
           Console.log('从服务器获得上传成功响应:', res.body)
           if (res.body.status === 'OK') {
+            console.log(_this.state.uploadParams[this.state.uploading_sub].file)
+            store.dispatch({ type: 'upload', file: _this.state.uploadParams[this.state.uploading_sub].file })//store同步
             if (this.state.uploading_sub === this.state.fileList.length - 1) {//如果所有文件上传结束
-              message.success(`文件${_this.state.uploadParams[this.state.uploading_sub].file.path}上传成功`)
+              Console.log('上传初始目录',this.state.tree_before)
+              //store.dispatch({ type: 'intree', tree: this.state.tree_before })//进入根目录
+              Console.log(`文件${_this.state.uploadParams[this.state.uploading_sub].file.path}上传成功`)
               _this.setState({
                 uploaded: true,    // 让进度条消失
                 uploading: false
               })
             }
             else {//否则上传下一个文件
-              this.setState({ uploading_sub: this.state.uploading_sub + 1 })
+              console.log(_this.state.uploading_sub)
+              this.setState({ uploading_sub: _this.state.uploading_sub + 1 })
+              console.log(_this.state.uploading_sub)
               this.preUpload()
             }
             return
@@ -86,11 +122,62 @@ class FileUpload extends Component {
     const _this = this
     _this.preUpload()
   }
-  preUpload = () => {//与服务器交互部分
+
+  goto_path = async path => {
+    var Console = console
+    var temp_path = path.slice()
+    var dirnames = temp_path.split('/')
+    Console.log(dirnames)
+    if (store.getState().init_tree.path !== dirnames[0]) {//跟目录名字不匹配
+      alert('根目录名不匹配，请检查')
+      return
+    }
+    dirnames.splice(0, 1)//删除路径中的根目录
+    dirnames.pop()//删除路径中的文件名
+    var tree_now = store.getState().init_tree//获取根目录
+    store.dispatch({ type: 'intree', tree: tree_now })//进入根目录
+    var content_now = store.getState().tree.content//获取根目录的文件内容
+    for (var pos in dirnames) {
+      Console.log(`正在查找${dirnames[pos]}文件夹 `)
+      var found = false//初始化未找到
+      for (var dir in content_now) {
+        //如果找到了文件夹，则寻找下一个子目录
+        if ('content' in content_now[dir] && dirnames[pos] === content_now[dir].path.slice(content_now[dir].path.lastIndexOf('/') + 1)) {
+          Console.log(`找到了${dirnames[pos]}文件夹`)
+          found = true
+          break
+        }
+      }
+      //如果没找到
+      if (!found) {
+        Console.log(`未找到${dirnames[pos]}文件夹，正在新建`)
+        //store.dispatch({ type: 'mkdir', dirname: dirnames[pos] })
+        await mkdir_request(dirnames[pos])
+      }
+      //进入目录的下一层
+      content_now = store.getState().tree.content//获取更新后当前目录的文件内容
+      Console.log('更新后的目录内容：', content_now)
+      for (dir in content_now) {
+        if ('content' in content_now[dir] && dirnames[pos] === content_now[dir].path.slice(content_now[dir].path.lastIndexOf('/') + 1)) {
+          store.dispatch({ type: 'intree', tree: content_now[dir] })//进入该子目录
+          content_now = content_now[dir].content//获取该子目录的目录文件
+          Console.log('当前目录树', store.getState().tree)
+          Console.log('当前目录文件内容', content_now)
+          break;
+        }
+      }
+    }
+    Console.log('现在所在目录', store.getState().tree)
+  }
+
+  preUpload = async () => {//与服务器交互部分
     var _this = this
     var Console = console;
     let uploadList = this.state.uploadParams[this.state.uploading_sub].chunks//分片上传列表
-
+    //console.log(_this.state.uploadParams[this.state.uploading_sub].file)
+    //_this.goto_path('hello/lyp/fenghui/hi')
+    await _this.goto_path(_this.state.uploadParams[this.state.uploading_sub].file.path)
+    //return
     const Data = {
       process: 'uploadRequest',
       username: store.getState().username,
@@ -98,8 +185,8 @@ class FileUpload extends Component {
       size: _this.state.uploadParams[this.state.uploading_sub].file.fileSize.toString(),
       path: _this.state.uploadParams[this.state.uploading_sub].file.path
     }
-    Console.log(`文件${Data.path}分块结果:`, this.state.uploadParams[this.state.uploading_sub])
-    Console.log(`文件${Data.path}上传请求报文:`, Data)
+    Console.log(`文件${Data.path} 分块结果: `, this.state.uploadParams[this.state.uploading_sub])
+    Console.log(`文件${Data.path} 上传请求报文: `, Data)
     request
       .post('http://' + config.server_addr + ':' + config.server_port)
       .send(JSON.stringify(Data))
@@ -114,6 +201,11 @@ class FileUpload extends Component {
           Console.log('从服务器获得请求响应:', res.body)
           if (res.body.status === 'OK') {//允许发送文件
             // 获得上传进度
+            if (!_this.state.uploading) {
+              _this.setState({
+                tree_before: store.getState().tree
+              })//获取根目录
+            }
             let uploadPercent = Number((parseInt(res.body.NextChunk) / this.state.chunksSize[this.state.uploading_sub] * 100).toFixed(2))
             _this.setState({
               uploaded: false,

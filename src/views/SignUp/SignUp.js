@@ -25,14 +25,14 @@ const schema = {
   password: {
     presence: { allowEmpty: false, message: '^密码不能为空' },
     length: {
-      minimum: 12,
+      minimum: 3,
       message: '密码长度至少为12'
     },
-    format: {
-      // 密码正则表达式匹配
-      pattern: '^((?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{12,}|(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[#?!@$%^&*-]).{12,}|(?=.*?[A-Z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{12,}|(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{12,})$',
-      message: '^密码必须同时包含大写英文字符、特殊符号和数字'
-    }
+    // format: {
+    //   // 密码正则表达式匹配
+    //   pattern: '^((?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9]).{12,}|(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[#?!@$%^&*-]).{12,}|(?=.*?[A-Z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{12,}|(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{12,})$',
+    //   message: '^密码必须同时包含大写英文字符、特殊符号和数字'
+    // }
   },
 };
 
@@ -167,8 +167,8 @@ const SignUp = props => {
         }
       });
       const json = await response.json();
-      Console.log('Success:', JSON.stringify(json));
-      Console.log(json.status)
+      //Console.log('Success:', JSON.stringify(json));
+      //Console.log(json.status)
       if (json.status === 'WRONG') {
         alert('用户名已存在')
         setFormState(formState => ({
@@ -177,6 +177,7 @@ const SignUp = props => {
         }));
       }
       if (json.status === 'OK') {
+        Console.log('注册成功:', formState.values.email)
         history.push('/sign-in');
       }
 
