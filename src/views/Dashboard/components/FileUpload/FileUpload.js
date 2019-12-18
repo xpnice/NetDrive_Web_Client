@@ -1,21 +1,42 @@
 import React, { Component } from 'react'
 //import PropTypes from 'prop-types'
 import 'antd/dist/antd.css';
-
 import { Upload, Icon, Progress, Spin } from 'antd'
 import {
-  Card, Button
+  Card, Button, Grid
 } from '@material-ui/core';
 import Switch from '@material-ui/core/Switch';
 import FormControlLabel from '@material-ui/core/FormControlLabel';
 import request from 'superagent'
 import SparkMD5 from 'spark-md5'
+import md5 from 'md5'
 import store from 'store';
 import config from 'config.json'
+//import DialogActions from '@material-ui/core/DialogActions';
+import DialogContent from '@material-ui/core/DialogContent';
 const Dragger = Upload.Dragger
+//检查当前路径下是否重名
+async function check_exist(path, tree) {
+  var sub_tree;
+  for (var sub in tree.content) {
+    if (tree.content[sub].path === path)
+      return true
+    if ('content' in tree.content[sub] && tree.content[sub].content.length !== 0) {//有子文件夹且非空
+      sub_tree = tree.content[sub]
+      if (await check_exist(path, sub_tree))
+        return true
+    }
+  }
+  return false
+}
+//建立文件夹请求
 async function mkdir_request(dirname) {
   var Console = console
-  let data = { process: 'mkdir', username: store.getState().username, path: `${store.getState().tree.path}/${dirname}` }
+  let data = { process: 'mkdir', username: store.getState().username, path: `${store.getState().tree.path}/${dirname}`, path_hash: md5(`${store.getState().tree.path}/${dirname}`) }
+  if (await check_exist(data.path, store.getState().tree)) {
+    alert('文件名已存在')
+    return
+  }
   Console.log('新建文件夹请求:', data)
   const url = 'http://' + config.server_addr + ':' + config.server_port;
   try {
@@ -45,11 +66,11 @@ async function mkdir_request(dirname) {
 }
 
 class FileUpload extends Component {
+  //props构造函数
   constructor(props) {
     super(props)
     this.state = {
       preUploading: false,   //预处理
-      //chunksSize: 0,   // 上传文件分块的总个数
       uploadPercent: -1,  // 上传率
       preUploadPercent: -1, // 预处理率  
       uploadRequest: false, // 上传请求，即进行第一个过程中
@@ -65,6 +86,7 @@ class FileUpload extends Component {
       pre_chunks_now: 0,
     }
   }
+  //上传文件收到over后发送ack包
   overack = () => {
     var _this = this,
       Console = console
@@ -72,7 +94,8 @@ class FileUpload extends Component {
       process: 'overack',
       username: store.getState().username,
       hash: _this.state.uploadParams[this.state.uploading_sub].file.fileMd5,
-      path: _this.state.uploadParams[this.state.uploading_sub].file.path
+      path: _this.state.uploadParams[this.state.uploading_sub].file.path,
+      path_hash: md5(_this.state.uploadParams[this.state.uploading_sub].file.path)
     }
     Console.log('确认上传成功请求包:', formData)
     request
@@ -94,21 +117,19 @@ class FileUpload extends Component {
         if (res.statusCode === 200) {
           Console.log('从服务器获得上传成功响应:', res.body)
           if (res.body.status === 'OK') {
-            console.log(_this.state.uploadParams[this.state.uploading_sub].file)
-            store.dispatch({ type: 'upload', file: _this.state.uploadParams[this.state.uploading_sub].file })//store同步
+            store.dispatch({ type: 'upload', file: _this.state.uploadParams[this.state.uploading_sub].file, uptime: res.body.uptime })//store同步
             if (this.state.uploading_sub === this.state.fileList.length - 1) {//如果所有文件上传结束
-              Console.log('上传初始目录',this.state.tree_before)
-              //store.dispatch({ type: 'intree', tree: this.state.tree_before })//进入根目录
+              Console.log('上传初始目录', this.state.tree_before)
+              store.dispatch({ type: 'intree', tree: this.state.tree_before })//进入根目录
               Console.log(`文件${_this.state.uploadParams[this.state.uploading_sub].file.path}上传成功`)
               _this.setState({
                 uploaded: true,    // 让进度条消失
-                uploading: false
+                uploading: false,
+                uploadPercent: 100
               })
             }
             else {//否则上传下一个文件
-              console.log(_this.state.uploading_sub)
               this.setState({ uploading_sub: _this.state.uploading_sub + 1 })
-              console.log(_this.state.uploading_sub)
               this.preUpload()
             }
             return
@@ -118,16 +139,17 @@ class FileUpload extends Component {
         }
       })
   }
+  //是否确认
   showConfirm = () => {
     const _this = this
     _this.preUpload()
   }
-
+  //抵达目标文件的路径，一路上有不存在的文件夹则建立
   goto_path = async path => {
     var Console = console
     var temp_path = path.slice()
     var dirnames = temp_path.split('/')
-    Console.log(dirnames)
+    //Console.log(dirnames)
     if (store.getState().init_tree.path !== dirnames[0]) {//跟目录名字不匹配
       alert('根目录名不匹配，请检查')
       return
@@ -151,31 +173,31 @@ class FileUpload extends Component {
       //如果没找到
       if (!found) {
         Console.log(`未找到${dirnames[pos]}文件夹，正在新建`)
-        //store.dispatch({ type: 'mkdir', dirname: dirnames[pos] })
         await mkdir_request(dirnames[pos])
       }
       //进入目录的下一层
       content_now = store.getState().tree.content//获取更新后当前目录的文件内容
-      Console.log('更新后的目录内容：', content_now)
       for (dir in content_now) {
         if ('content' in content_now[dir] && dirnames[pos] === content_now[dir].path.slice(content_now[dir].path.lastIndexOf('/') + 1)) {
           store.dispatch({ type: 'intree', tree: content_now[dir] })//进入该子目录
           content_now = content_now[dir].content//获取该子目录的目录文件
-          Console.log('当前目录树', store.getState().tree)
-          Console.log('当前目录文件内容', content_now)
           break;
         }
       }
     }
-    Console.log('现在所在目录', store.getState().tree)
   }
-
-  preUpload = async () => {//与服务器交互部分
+  //与服务器交互部分，请求
+  preUpload = async () => {
     var _this = this
     var Console = console;
     let uploadList = this.state.uploadParams[this.state.uploading_sub].chunks//分片上传列表
     //console.log(_this.state.uploadParams[this.state.uploading_sub].file)
     //_this.goto_path('hello/lyp/fenghui/hi')
+    if (!_this.state.uploading) {
+      _this.setState({
+        tree_before: store.getState().tree
+      })//获取根目录
+    }
     await _this.goto_path(_this.state.uploadParams[this.state.uploading_sub].file.path)
     //return
     const Data = {
@@ -183,8 +205,10 @@ class FileUpload extends Component {
       username: store.getState().username,
       hash: _this.state.uploadParams[this.state.uploading_sub].file.fileMd5,
       size: _this.state.uploadParams[this.state.uploading_sub].file.fileSize.toString(),
-      path: _this.state.uploadParams[this.state.uploading_sub].file.path
+      path: _this.state.uploadParams[this.state.uploading_sub].file.path,
+      path_hash: md5(_this.state.uploadParams[this.state.uploading_sub].file.path)
     }
+
     Console.log(`文件${Data.path} 分块结果: `, this.state.uploadParams[this.state.uploading_sub])
     Console.log(`文件${Data.path} 上传请求报文: `, Data)
     request
@@ -201,11 +225,6 @@ class FileUpload extends Component {
           Console.log('从服务器获得请求响应:', res.body)
           if (res.body.status === 'OK') {//允许发送文件
             // 获得上传进度
-            if (!_this.state.uploading) {
-              _this.setState({
-                tree_before: store.getState().tree
-              })//获取根目录
-            }
             let uploadPercent = Number((parseInt(res.body.NextChunk) / this.state.chunksSize[this.state.uploading_sub] * 100).toFixed(2))
             _this.setState({
               uploaded: false,
@@ -227,6 +246,7 @@ class FileUpload extends Component {
 
       })
   }
+  //分块上传
   handlePartUpload = (Chunk_Now, sub) => {
     const _this = this
     var Console = console
@@ -254,7 +274,7 @@ class FileUpload extends Component {
       .end((err, res) => {
         //Console.log('Send Chunk Response', res.body);
         if (err) {
-          console.log(err);
+          Console.log(err);
           alert('连接错误，请重新上传')
           return
         }
@@ -262,7 +282,7 @@ class FileUpload extends Component {
           Console.log('从服务器获得请求响应:', res.body)
           if (res.body.status === 'OK') {
             // 计算上传进度
-            let uploadPercent = Number(((chunk) / _this.state.chunksSize[_this.state.uploading_sub] * 100).toFixed(2))
+            let uploadPercent = Number(((chunk + 1) / _this.state.chunksSize[_this.state.uploading_sub] * 100).toFixed(2))
             _this.setState({
               uploadPercent,
               uploading: true
@@ -279,6 +299,7 @@ class FileUpload extends Component {
         }
       })
   }
+  //组件渲染函数
   render() {
     const { preUploading, uploadPercent, preUploadPercent, uploadRequest, uploaded, uploading } = this.state
     const _this = this
@@ -293,9 +314,10 @@ class FileUpload extends Component {
           }
         })
       },
+      listType: 'text',
       directory: this.state.directory,
       multiple: true,
-      beforeUpload: (file) => {
+      beforeUpload: async (file) => {
         // 首先清除一下各种上传的状态
         _this.setState({
           uploaded: false,   // 上传成功
@@ -305,22 +327,34 @@ class FileUpload extends Component {
         // 兼容性的处理
         let blobSlice = File.prototype.slice || File.prototype.mozSlice || File.prototype.webkitSlice,
           chunkSize = config.chunk_size,                             // 切片每次5M
-          chunks = Math.ceil(file.size / chunkSize),  //切片数量
+          chunks = Math.ceil(file.size / chunkSize),  //
+
           currentChunk = 0, // 当前上传的chunk
           spark = new SparkMD5.ArrayBuffer(),
           // 对arrayBuffer数据进行md5加密，产生一个md5字符串
           chunkFileReader = new FileReader(),  // 用于计算出每个chunkMd5
           totalFileReader = new FileReader()  // 用于计算出总文件的fileMd5
-
         let params = { chunks: [], file: {} },   // 用于上传所有分片的md5信息
           arrayBuffer = []              // 用于存储每个chunk的arrayBuffer对象,用于分片上传使用
         params.file.fileName = file.name
-        if (file.webkitRelativePath !== '')
+        if (file.webkitRelativePath !== '') {//上传文件夹时跳过重名文件
           params.file.path = `${store.getState().tree.path}/${file.webkitRelativePath}`
-        else
+          console.log(store.getState().tree)
+          console.log(params.file.path)
+          if (await check_exist(params.file.path, store.getState().tree)) {
+            console.log(params.file.path, '已存在')
+            return
+          }
+        }
+        else {
           params.file.path = `${store.getState().tree.path}/${file.name}`
-        params.file.fileSize = file.size
+          if (await check_exist(params.file.path, store.getState().tree)) {
+            alert('文件已存在')
+            return
+          }
 
+        }
+        params.file.fileSize = file.size
 
 
         totalFileReader.readAsArrayBuffer(file)
@@ -328,7 +362,6 @@ class FileUpload extends Component {
           // 对整个totalFile生成md5
           spark.append(e.target.result)
           params.file.fileMd5 = spark.end() // 计算整个文件的fileMd5
-
         }
 
         chunkFileReader.onload = function (e) {
@@ -375,7 +408,7 @@ class FileUpload extends Component {
             uploadParams.push(params);
             arrayBufferData.push(arrayBuffer)
             // 表示预处理结束，将上传的参数，arrayBuffer的数据存储起来
-            if (_this.state.pre_chunks_now === _this.state.totalchunks) {
+            if (_this.state.pre_chunks_now >= _this.state.totalchunks) {
               Console.log('所有文件预处理完成')
               _this.setState({
                 preUploading: false,
@@ -404,7 +437,6 @@ class FileUpload extends Component {
         loadNext()
         let fileList = _this.state.fileList
         fileList.push(file)
-        //console.log('文件列表:', fileList)
         let totalchunks = fileList.reduce(function (partial, file) {
           return partial + Math.ceil(file.size / config.chunk_size);
         }, 0)
@@ -417,78 +449,120 @@ class FileUpload extends Component {
       },
       fileList: _this.state.fileList,
     }
-
-
-
     return (
       <Card style={{ position: 'relative', height: '100%' }}>
-        <FormControlLabel
-          style={{ marginTop: 8 }}
-          control={
-            <Switch
-              checked={this.state.directory}
-              onChange={() => { this.setState({ directory: !this.state.directory }) }}
-              color="primary"
-
-            />
-          }
-          label="是否支持上传文件夹"
-          labelPlacement="start"
-        />
-        <div className="content-inner" style={{ height: 430 }}>
-          <Spin
-            spinning={preUploading}
-            //style={{ height: '80%' }}
-            tip={
-              <div >
-                <h3
-                  style={{ margin: '10px auto', color: '#1890ff' }}
-                >
-                  文件预处理中...
-                </h3>
-                <Progress
-                  percent={preUploadPercent}
-                  status="active"
-                  type="circle"
-                  width={80}
-                />
-              </div>
-            }
-          >
-            <div style={{ marginTop: 8, height: '50%' }}>
-              <Dragger {...uploadProp} style={{ backgroundColor: '#ffffff' }}>
-                <p className="ant-upload-drag-icon">
-                  <Icon type="inbox" />
-                </p>
-                <p className="ant-upload-text">点击或者拖拽文件进行上传</p>
-                <p className="ant-upload-hint">Support for a single or bulk upload. Strictly prohibit from uploading company data or other band files</p>
-              </Dragger>
-
-              {uploadPercent >= 0 && !!uploading && <div style={{ marginTop: 20, width: '95%' }}>
-                <Progress
-                  percent={uploadPercent}
-                  status="active"
-                />
-                <h4>文件上传中，请勿关闭窗口</h4>
-              </div>}
-              {!!uploadRequest && <h4 style={{ color: '#1890ff' }}>上传请求中...</h4>}
-              {!!uploaded && <h4 style={{ color: '#52c41a' }}>文件上传成功</h4>}
-
-            </div>
-          </Spin>
-
-        </div>
-
-        <Button
-          color="primary"
-          disabled={!!(this.state.preUploadPercent < 100 || this.state.fileList.length === 0)}
-          fullWidth
-          onClick={this.showConfirm}
-          variant="contained"
-          style={{ position: 'absolute', bottom: 0 }}
+        <Grid
+          container
+          spacing={2}
         >
-          <Icon type="upload" /> 提交上传
+          <Grid
+            item
+            lg={1}
+            md={1}
+            xl={1}
+            xs={1}
+          />
+          <Grid
+            item
+            lg={5}
+            md={5}
+            xl={5}
+            xs={5}
+          >
+            <FormControlLabel
+              style={{ marginTop: 8 }}
+              control={
+                <Switch
+                  checked={this.state.directory}
+                  onChange={() => { this.setState({ directory: !this.state.directory }) }}
+                  color="primary"
+
+                />
+              }
+              label="是否支持上传文件夹"
+              labelPlacement="start"
+            />
+          </Grid>
+          <Grid
+            item
+            lg={5}
+            md={5}
+            xl={5}
+            xs={5}
+          >
+            <Button
+              color="primary"
+              fullWidth
+              disabled={!!(this.state.preUploadPercent < 100 || this.state.fileList.length === 0)}
+
+              onClick={this.showConfirm}
+              variant="contained"
+              style={{ marginTop: 8 }}
+            >
+              <Icon type="upload" /> 提交上传
         </Button>
+          </Grid>
+          <Grid
+            item
+            lg={12}
+            md={12}
+            xl={12}
+            xs={12}
+          >
+            <DialogContent >
+              <div className="content-inner" style={{ height: 500 }}>
+                <Spin
+                  spinning={preUploading}
+                  tip={
+                    <div >
+                      <h3
+                        style={{ margin: '10px auto', color: '#1890ff' }}
+                      >
+                        文件预处理中...
+                </h3>
+                      <Progress
+                        percent={preUploadPercent}
+                        status="active"
+                        type="circle"
+                      //width={80}
+                      />
+                    </div>
+                  }
+                >
+                  <div style={{ marginTop: 8, height: '50%', width: '90%', marginLeft: '5%' }}>
+                    <Dragger {...uploadProp} style={{ backgroundColor: '#ffffff' }}>
+
+                      {(uploaded || uploading) ? <Progress
+                        strokeColor={{
+                          '0%': '#108ee9',
+                          '100%': '#87d068',
+                        }}
+                        //strokeWidth={12}
+                        type="circle"
+                        percent={uploadPercent}
+                      // status={uploaded ? 'success' : 'active'}
+                      /> : <div><p className="ant-upload-drag-icon">
+                        <Icon type="inbox" />
+                      </p>
+                          <p className="ant-upload-text">点击或者拖拽文件或者文件夹到此处进行上传</p>
+                        </div>}
+                    </Dragger>
+
+                    {uploadPercent >= 0 && !!uploading && <div style={{ marginTop: 20, width: '95%' }}>
+
+                      <h4>文件上传中，请勿关闭窗口</h4>
+                    </div>}
+                    {!!uploadRequest && <h4 style={{ color: '#1890ff' }}>上传请求中...</h4>}
+
+                  </div>
+                </Spin>
+              </div>
+
+            </DialogContent>
+
+          </Grid>
+
+        </Grid>
 
 
 
@@ -496,10 +570,7 @@ class FileUpload extends Component {
     )
   }
 }
-
 FileUpload.propTypes = {
   //...
 }
-
-
 export default FileUpload;

@@ -76,6 +76,8 @@ function TreeContent(props) {
         defaultExpandedKeys={[prop4store.init_tree.path]}
         expandAction="doubleClick"
         onSelect={onSelect}
+        //expandedKeys={}
+        //selectedKeys={[prop4store.tree.path]}
       >
         {Tree_view(prop4store.init_tree, 0)}
       </DirectoryTree>

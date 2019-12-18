@@ -1,4 +1,5 @@
 const init_state = {
+  copyboard: null,
   tree: {
     //path: store.getState().username,
     path: 'hello',
@@ -89,7 +90,7 @@ export default (state = init_state, action) => {
           size: '-',
           uptime: '-'
         }
-        files.files.unshift(info)
+        files.files.push(info)
       }
       return Object.assign({}, state, { username: action.username, tree: action.tree, files, init_tree: action.tree });
     }
@@ -120,19 +121,18 @@ export default (state = init_state, action) => {
     case 'delete': {//删除某个文件
       tree = Object.assign({}, state.tree);
       for (file in tree.content) {
-        if (tree.content[file].path === `${state.tree.path}/${action.oldData.filename}`) {
+        if (tree.content[file].path === `${state.tree.path}/${action.filename}`) {
           tree.content.splice(file, 1);
-          Console.log(`删除目录${state.tree.path}下的文件${action.oldData.filename}`)
+          Console.log(`删除目录${state.tree.path}下的文件${action.filename}`)
         }
       }
       files = Object.assign({}, state.files);
       for (file in files.files) {
-        if (files.files[file].filename === action.oldData.filename) {
+        if (files.files[file].filename === action.filename) {
           files.files.splice(file, 1)
           // Console.log(`删除目录${state.tree.path}下的文件${action.oldData.filename}`)
         }
       }
-      Console.log(files)
       return Object.assign({}, state, { tree, files });
     }
     case 'changename': {//修改文件/文件夹名字
@@ -146,9 +146,6 @@ export default (state = init_state, action) => {
           sub_string = JSON.parse(sub_string)
           Console.log(sub_string)
           tree.content[file] = sub_string
-          //Console.log(sub_string)
-          //Console.log(`删除目录${state.tree.path}下的文件${action.oldData.filename}`)
-
         }
       }
       files = Object.assign({}, state.files);
@@ -167,18 +164,41 @@ export default (state = init_state, action) => {
       tree.content.unshift(newdir)
       let newfile = { filename: action.dirname, size: '-', uptime: '-', }
       files = Object.assign({}, state.files);
-      files.files.push(newfile)
+      files.files.unshift(newfile)
       return Object.assign({}, state, { tree, files });
     }
     case 'upload': {//上传文件
       let newdir = { path: `${state.tree.path}/${action.file.fileName}`, info: { size: action.file.fileSize, uptime: 'todo' } }
       tree = Object.assign({}, state.tree);
       tree.content.unshift(newdir)
-      let newfile = { filename: action.file.fileName, size: action.file.fileSize, uptime: 'todo' }
+      let newfile = { filename: action.file.fileName, size: action.file.fileSize, uptime: action.uptime }
       files = Object.assign({}, state.files);
       files.files.unshift(newfile)
       return Object.assign({}, state, { tree, files });
     }
+    case 'copy': {
+      return Object.assign({}, state, { copyboard: action.copyboard });
+    }
+    case 'paste': {
+      let newdir = {
+        path: action.newpath,
+        info: {
+          size: action.info.size,
+          uptime: action.info.uptime
+        }
+      }
+      tree = Object.assign({}, state.tree);
+      tree.content.unshift(newdir)
+      let newfile = {
+        filename: action.newpath.slice(action.newpath.lastIndexOf('/') + 1),
+        size: action.info.size,
+        uptime: action.info.uptime
+      }
+      files = Object.assign({}, state.files);
+      files.files.unshift(newfile)
+      return Object.assign({}, state, { tree, files });
+    }
+
     default:
       return state;
   }
