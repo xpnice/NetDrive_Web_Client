@@ -70,10 +70,6 @@ const tableIcons = {
   Copy: forwardRef((props, ref) => <FlipToBackIcon {...props} ref={ref} />),
   Paste: forwardRef((props, ref) => <FlipToFrontIcon {...props} ref={ref} />),
   Move: forwardRef((props, ref) => <PanToolIcon {...props} ref={ref} />)
-
-
-
-
 };
 function PaperComponent(props) {
   return (
@@ -102,7 +98,12 @@ async function changename_request(newname, oldname) {
   var oldpath = `${store.getState().tree.path}/${oldname}`
   var newpath = `${store.getState().tree.path}/${newname}`
   if (await check_exist(newpath, store.getState().tree)) {
-    alert('文件名已存在')
+    notification.error({
+      message: '文件名重复！',
+      description:
+        '请不要重复命名，这会让我很迷惑',
+      placement: 'bottomRight'
+    });
     return
   }
   let data = { process: 'changename', username: store.getState().username, oldpath, newpath, oldpath_hash: md5(oldpath), newpath_hash: md5(newpath) }
@@ -137,7 +138,12 @@ async function mkdir_request(dirname) {
 
   let data = { process: 'mkdir', username: store.getState().username, path: `${store.getState().tree.path}/${dirname}`, path_hash: md5(`${store.getState().tree.path}/${dirname}`) }
   if (await check_exist(data.path, store.getState().tree)) {
-    alert('文件名已存在')
+    notification.warn({
+      message: '文件夹名重复！',
+      description:
+        `${dirname}已存在，换个名字吧`,
+      placement: 'bottomRight'
+    });
     return
   }
   Console.log('新建文件夹请求:', data)
@@ -295,6 +301,7 @@ function MaterialTableDemo(props) {
   //文件的下载
   const download = (path, rowData) => {
     //var can_down = false;
+
     var Console = console
     const Data = {
       process: 'downloadRequest',
@@ -373,7 +380,7 @@ function MaterialTableDemo(props) {
   //文件|文件夹的复制
   const copy = () => {
     if (state.selectedRow === null) {
-      notification.open({
+      notification.warn({
         message: '无内容可复制！',
         description:
           '请先点击文件列表中的文件或文件夹再点击复制按钮',
@@ -386,7 +393,7 @@ function MaterialTableDemo(props) {
         if (prop4store.tree.content[sub].path === copy_path) {
           let copyboard = prop4store.tree.content[sub]
           store.dispatch({ type: 'copy', copyboard })
-          notification.open({
+          notification.success({
             message: ('content' in prop4store.tree.content[sub] ? `成功复制文件夹${state.selectedRow.filename}` : `成功复制文件${state.selectedRow.filename}`),
             description:
               '进入其他目录进行粘贴吧!',
@@ -467,7 +474,12 @@ function MaterialTableDemo(props) {
   }
   const move = async () => {
     if (-1 === prop4store.copyboard.path.slice(0, prop4store.copyboard.path.lastIndexOf('/')).indexOf(prop4store.tree.path)) {
-      alert('套娃行为是被严厉禁止的')
+      notification.error({
+        message: '套娃行为是严厉禁止的！',
+        description:
+          '请不要把父文件夹移动到子文件夹中',
+        placement: 'bottomRight'
+      });
       return
     }
     setState({
@@ -484,7 +496,7 @@ function MaterialTableDemo(props) {
   }
   const showModal = () => {
     if (prop4store.copyboard === null) {
-      notification.open({
+      notification.warning({
         message: '无内容可粘贴！',
         description:
           '请先点击文件列表中的文件或文件夹再点击复制按钮',
@@ -541,7 +553,7 @@ function MaterialTableDemo(props) {
       }
     }
   }
-  const handleOk = () => {
+  const handleOk = async () => {
     setState({
       ...state,
       confirmLoading: true,
@@ -559,16 +571,18 @@ function MaterialTableDemo(props) {
       });
     }
     else {
-      //request
-      paste()
-      //store.dispatch({ type: 'paste' })//调整位置
-      setTimeout(() => {
-        setState({
-          ...state,
-          visible: false,
-          confirmLoading: false,
-        });
-      }, 2000);
+      await paste()
+      new Promise((resolve) => {
+        setTimeout(() => {
+          setState({
+            ...state,
+            visible: false,
+            confirmLoading: false,
+          });
+          resolve();
+        }, 600);
+      })
+
     }
   };
   const handleCancel = () => {
@@ -589,18 +603,25 @@ function MaterialTableDemo(props) {
         editable={{
           onRowUpdate: (newData, oldData) =>
             new Promise((resolve) => {
-              changename_request(newData.filename, oldData.filename)
+              
               setTimeout(() => {
                 //在store中更新目录树和目录内容
+                changename_request(newData.filename, oldData.filename)
                 resolve()
               }, 600)
             }),
           onRowDelete: oldData =>
             new Promise(resolve => {
-              delete_request(prop4store.tree, oldData)
               setTimeout(() => {
+                delete_request(prop4store.tree, oldData)
                 resolve();
               }, 600);
+              notification.success({
+                message: '删除成功！',
+                description:
+                  `${oldData.filename}已经删除干净了`,
+                placement: 'bottomRight'
+              });
             }),
           onRowAdd: (newData) =>
             new Promise((resolve) => {
@@ -609,6 +630,12 @@ function MaterialTableDemo(props) {
                 mkdir_request(newData.filename)
                 resolve()
               }, 600)
+              notification.success({
+                message: '文件夹新建成功！',
+                description:
+                  `${newData.filename}建立成功`,
+                placement: 'bottomRight'
+              });
             }),
         }}
         actions={[
@@ -651,8 +678,19 @@ function MaterialTableDemo(props) {
             icon: tableIcons.Export,
             tooltip: 'Download File',
             onClick: (event, rowData) => {
-              dlClickOpen()
-              download(prop4store.tree.path, rowData)
+              if (rowData.size === '-') {
+                notification.info({
+                  message: '下载失败！',
+                  description:
+                    '很抱歉我们暂不支持文件夹下载',
+                  placement: 'bottomRight'
+                });
+              }
+              else {
+                dlClickOpen()
+                download(prop4store.tree.path, rowData)
+              }
+
             }
           }
         ]}

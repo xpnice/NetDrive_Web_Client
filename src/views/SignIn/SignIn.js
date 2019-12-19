@@ -14,6 +14,7 @@ import {
 import CircularIndeterminate from '../loading.js'
 import md5 from 'md5'
 import config from 'config.json'
+import { notification } from 'antd'
 
 
 const schema = {
@@ -174,7 +175,12 @@ const SignIn = props => {
       const json = await response.json();
 
       if (json.status === 'WRONG') {
-        alert('账号或密码错误!')
+        notification.error({
+          message: '账号或密码错误',
+          description:
+            '请检查账号密码输入是否正确，如果没有账号请注册',
+          placement: 'bottomRight'
+        });
         setFormState(formState => ({
           ...formState,
           loading: false

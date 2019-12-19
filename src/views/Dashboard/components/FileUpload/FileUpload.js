@@ -12,6 +12,8 @@ import SparkMD5 from 'spark-md5'
 import md5 from 'md5'
 import store from 'store';
 import config from 'config.json'
+import { notification } from 'antd'
+
 //import DialogActions from '@material-ui/core/DialogActions';
 import DialogContent from '@material-ui/core/DialogContent';
 const Dragger = Upload.Dragger
@@ -34,7 +36,12 @@ async function mkdir_request(dirname) {
   var Console = console
   let data = { process: 'mkdir', username: store.getState().username, path: `${store.getState().tree.path}/${dirname}`, path_hash: md5(`${store.getState().tree.path}/${dirname}`) }
   if (await check_exist(data.path, store.getState().tree)) {
-    alert('文件名已存在')
+    notification.warn({
+      message: '文件已存在',
+      description:
+        '请修改原文件名',
+      placement: 'bottomRight'
+    });
     return
   }
   Console.log('新建文件夹请求:', data)
@@ -349,7 +356,12 @@ class FileUpload extends Component {
         else {
           params.file.path = `${store.getState().tree.path}/${file.name}`
           if (await check_exist(params.file.path, store.getState().tree)) {
-            alert('文件已存在')
+            notification.error({
+              message: '文件已存在',
+              description:
+                '请上传其他文件',
+              placement: 'bottomRight'
+            });
             return
           }
 
@@ -493,8 +505,7 @@ class FileUpload extends Component {
             <Button
               color="primary"
               fullWidth
-              disabled={!!(this.state.preUploadPercent < 100 || this.state.fileList.length === 0)}
-
+              disabled={!!(this.state.uploading || this.state.preUploadPercent < 100 || this.state.fileList.length === 0)}
               onClick={this.showConfirm}
               variant="contained"
               style={{ marginTop: 8 }}

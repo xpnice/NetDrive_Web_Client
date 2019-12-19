@@ -168,7 +168,7 @@ export default (state = init_state, action) => {
       return Object.assign({}, state, { tree, files });
     }
     case 'upload': {//上传文件
-      let newdir = { path: `${state.tree.path}/${action.file.fileName}`, info: { size: action.file.fileSize, uptime: 'todo' } }
+      let newdir = { path: `${state.tree.path}/${action.file.fileName}`, info: { size: action.file.fileSize, uptime: action.file.uptime } }
       tree = Object.assign({}, state.tree);
       tree.content.unshift(newdir)
       let newfile = { filename: action.file.fileName, size: action.file.fileSize, uptime: action.uptime }

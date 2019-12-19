@@ -13,6 +13,7 @@ import {
 import CircularIndeterminate from '../loading.js'
 import md5 from 'md5'
 import config from 'config.json'
+import { notification } from 'antd'
 
 const schema = {
   email: {
@@ -170,7 +171,12 @@ const SignUp = props => {
       //Console.log('Success:', JSON.stringify(json));
       //Console.log(json.status)
       if (json.status === 'WRONG') {
-        alert('用户名已存在')
+        notification.error({
+          message: '用户名已存在',
+          description:
+            '请重新注册',
+          placement: 'bottomRight'
+        });
         setFormState(formState => ({
           ...formState,
           loading: false
